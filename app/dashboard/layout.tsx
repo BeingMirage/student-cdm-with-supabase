@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { CircleUser } from "lucide-react"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/components/auth-provider"
 
 export default function DashboardLayout({
        children,
@@ -37,9 +38,7 @@ export default function DashboardLayout({
 
                             {/* Profile - Fixed Width to allow centering */}
                             <div className="w-[200px] flex justify-end items-center shrink-0">
-                                   <Link href="/profile" className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700 hover:bg-gray-700 transition-colors">
-                                          <CircleUser className="size-7 text-white" />
-                                   </Link>
+                                   <UserProfile />
                             </div>
                      </header>
 
@@ -61,6 +60,25 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
                      className={`transition-colors ${isActive ? "text-[#FF9E44]" : "text-gray-300 hover:text-white"}`}
               >
                      {children}
+              </Link>
+       )
+}
+
+function UserProfile() {
+       const { profile, isLoading } = useAuth()
+       const userInitials = profile?.full_name
+              ? profile.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
+              : null
+
+       return (
+              <Link href="/profile" className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700 hover:bg-gray-700 transition-colors overflow-hidden">
+                     {isLoading ? (
+                            <div className="size-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                     ) : userInitials ? (
+                            <span className="text-white font-medium text-sm">{userInitials}</span>
+                     ) : (
+                            <CircleUser className="size-7 text-white" />
+                     )}
               </Link>
        )
 }

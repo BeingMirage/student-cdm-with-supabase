@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,6 +9,8 @@ import {
        Clock, Award, TrendingUp, CheckCircle, AlertCircle
 } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/components/auth-provider"
+import { createClient } from "@/lib/supabase/client"
 
 // ─── Data ────────────────────────────────────────────────────────────
 
@@ -34,6 +36,38 @@ const achievements = [
 
 export default function ProfilePage() {
        const [activeTab, setActiveTab] = useState<Tab>("Overview")
+       const { user, profile } = useAuth()
+       const [diagnosticReport, setDiagnosticReport] = useState<any>(null)
+       const [isLoadingReport, setIsLoadingReport] = useState(false)
+       const supabase = createClient()
+
+       useEffect(() => {
+              const fetchDiagnosticReport = async () => {
+                     if (!user) return
+                     setIsLoadingReport(true)
+                     try {
+                            const { data, error } = await supabase
+                                   .from('diagnostic_reports')
+                                   .select('*')
+                                   .eq('student_id', user.id)
+                                   .order('created_at', { ascending: false })
+                                   .limit(1)
+                                   .maybeSingle()
+
+                            if (error) {
+                                   console.error('Error fetching diagnostic report:', error)
+                            } else {
+                                   setDiagnosticReport(data)
+                            }
+                     } catch (err) {
+                            console.error('Unexpected error fetching diagnostic report:', err)
+                     } finally {
+                            setIsLoadingReport(false)
+                     }
+              }
+
+              fetchDiagnosticReport()
+       }, [user, supabase])
 
        return (
               <div className="min-h-screen bg-[#F8F9FB]">
@@ -60,16 +94,16 @@ export default function ProfilePage() {
                             {/* Student Info */}
                             <div className="flex items-center gap-5 pb-6">
                                    <div className="size-16 rounded-full bg-[#FFF5ED] border-2 border-[#FF9E44] flex items-center justify-center text-[#FF9E44] text-xl font-bold shrink-0">
-                                          RK
+                                          {profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || "ST"}
                                    </div>
                                    <div>
-                                          <h2 className="text-xl font-bold text-[#1e232c]">Rajesh Kumar</h2>
-                                          <p className="text-sm text-gray-500">Indian Institute of Technology, Delhi • B.Tech - Computer Science</p>
-                                          <p className="text-sm text-[#FF9E44] font-medium">2024 • Final Year</p>
+                                          <h2 className="text-xl font-bold text-[#1e232c]">{profile?.full_name || "Student Name"}</h2>
+                                          <p className="text-sm text-gray-500">IIM Kozhikode • Student Profile</p>
+                                          <p className="text-sm text-[#FF9E44] font-medium">2025 • Student</p>
                                           <div className="flex items-center gap-5 mt-1 text-xs text-gray-500">
-                                                 <span className="flex items-center gap-1"><Mail className="size-3" /> rajesh.kumar@iitd.ac.in</span>
-                                                 <span className="flex items-center gap-1"><Phone className="size-3" /> +91 98765 43210</span>
-                                                 <span className="flex items-center gap-1"><MapPin className="size-3" /> New Delhi, India</span>
+                                                 <span className="flex items-center gap-1"><Mail className="size-3" /> {profile?.email || "email@iimk.ac.in"}</span>
+                                                 <span className="flex items-center gap-1"><Phone className="size-3" /> {profile?.phone_number || "+91 --- --- ----"}</span>
+                                                 <span className="flex items-center gap-1"><MapPin className="size-3" /> Kerala, India</span>
                                           </div>
                                    </div>
                             </div>
@@ -101,8 +135,8 @@ export default function ProfilePage() {
 
                                    {/* Main Content */}
                                    <div className="flex-1 min-w-0">
-                                          {activeTab === "Overview" && <OverviewTab />}
-                                          {activeTab === "Diagnostic Interview" && <DiagnosticInterviewTab />}
+                                          {activeTab === "Overview" && <OverviewTab diagnosticReport={diagnosticReport} />}
+                                          {activeTab === "Diagnostic Interview" && <DiagnosticInterviewTab report={diagnosticReport} isLoading={isLoadingReport} />}
                                           {activeTab === "Resume Review" && <ResumeReviewTab />}
                                           {activeTab === "Practice Interview" && <PracticeInterviewTab />}
                                           {activeTab === "AI Interview" && <AIInterviewTab />}
@@ -228,7 +262,11 @@ function MentorNote({ name, role, date, note }: { name: string; role: string; da
 
 // ─── Overview Tab ────────────────────────────────────────────────────
 
-function OverviewTab() {
+function OverviewTab({ diagnosticReport }: { diagnosticReport: any }) {
+       const avgRating = diagnosticReport?.average_rating || 4.2
+       const readiness = avgRating >= 4 ? "High" : avgRating >= 3 ? "Medium" : "Developing"
+       const readinessColor = readiness === "High" ? "bg-green-100 text-green-700" : readiness === "Medium" ? "bg-orange-100 text-orange-600" : "bg-red-100 text-red-600"
+
        return (
               <div className="space-y-6">
                      {/* Summary */}
@@ -236,9 +274,7 @@ function OverviewTab() {
                             <SectionLabel className="bg-orange-100 text-orange-600 mb-3">Summary • About me</SectionLabel>
                             <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
                                    <p className="text-sm text-gray-600 leading-relaxed">
-                                          Passionate software engineer with strong problem-solving skills and experience in full-stack development.
-                                          Actively seeking opportunities in product development and system design. Proficient in React, Node.js,
-                                          and cloud technologies. Led multiple hackathon teams to victory.
+                                          {diagnosticReport?.improvement_areas || "Mentee summary and areas for improvement will be displayed here after the diagnostic interview."}
                                    </p>
                             </Card>
                      </div>
@@ -249,13 +285,13 @@ function OverviewTab() {
                                    <p className="text-xs text-gray-400 mb-2">Average Rating of Learner</p>
                                    <div className="flex items-center justify-center gap-2">
                                           <Star className="size-5 text-[#FF9E44] fill-[#FF9E44]" />
-                                          <span className="text-3xl font-bold text-[#1e232c]">4.2</span>
+                                          <span className="text-3xl font-bold text-[#1e232c]">{avgRating.toFixed(1)}</span>
                                    </div>
                                    <p className="text-[10px] text-gray-400 mt-1">out of 5.0</p>
                             </Card>
                             <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
                                    <p className="text-xs text-gray-400 mb-2">Learner&apos;s Readiness</p>
-                                   <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full">High</span>
+                                   <span className={`inline-block ${readinessColor} text-sm font-bold px-4 py-1.5 rounded-full`}>{readiness}</span>
                             </Card>
                             <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
                                    <p className="text-xs text-gray-400 mb-2">Batch Standing</p>
@@ -267,18 +303,16 @@ function OverviewTab() {
                      {/* Subject Preferences & Job Targets */}
                      <div className="grid grid-cols-2 gap-4">
                             <div>
-                                   <SectionLabel className="bg-orange-100 text-orange-600 mb-3">Subject Preferences</SectionLabel>
-                                   <div className="flex flex-wrap gap-2 mt-2">
-                                          {["Software Development", "Product Management", "Data Science"].map((s) => (
-                                                 <span key={s} className="px-3 py-1.5 rounded-full border border-gray-200 text-sm text-gray-700">{s}</span>
-                                          ))}
+                                   <SectionLabel className="bg-orange-100 text-orange-600 mb-3">Strongest Aspects</SectionLabel>
+                                   <div className="mt-2">
+                                          <p className="text-sm text-gray-600">{diagnosticReport?.strongest_aspects || "Information not available"}</p>
                                    </div>
                             </div>
                             <div>
                                    <SectionLabel className="bg-orange-100 text-orange-600 mb-3">Job Targets</SectionLabel>
                                    <div className="flex flex-wrap gap-2 mt-2">
-                                          {["Backend Engineer", "Full Stack Developer", "Product Engineer", "DevOps Engineer"].map((s) => (
-                                                 <span key={s} className="px-3 py-1.5 rounded-full border border-[#FF9E44] text-sm text-[#FF9E44]">{s}</span>
+                                          {(diagnosticReport?.targeted_roles?.split(',') || ["Pending Assessment"]).map((s: string) => (
+                                                 <span key={s} className="px-3 py-1.5 rounded-full border border-[#FF9E44] text-sm text-[#FF9E44]">{s.trim()}</span>
                                           ))}
                                    </div>
                             </div>
@@ -286,24 +320,9 @@ function OverviewTab() {
 
                      {/* Skills */}
                      <div>
-                            <SectionLabel className="bg-orange-100 text-orange-600 mb-3">Skills</SectionLabel>
-                            <div className="space-y-3 mt-2">
-                                   <div>
-                                          <p className="text-xs font-semibold text-gray-500 mb-2">Technical Skills</p>
-                                          <div className="flex flex-wrap gap-2">
-                                                 {["React", "Node.js", "Python", "AWS", "Docker", "MongoDB", "TypeScript", "System Design"].map((s) => (
-                                                        <span key={s} className="px-3 py-1.5 rounded-full border border-blue-200 text-sm text-blue-700 bg-blue-50">{s}</span>
-                                                 ))}
-                                          </div>
-                                   </div>
-                                   <div>
-                                          <p className="text-xs font-semibold text-gray-500 mb-2">Soft Skills</p>
-                                          <div className="flex flex-wrap gap-2">
-                                                 {["Leadership", "Communication", "Problem Solving", "Team Collaboration", "Time Management"].map((s) => (
-                                                        <span key={s} className="px-3 py-1.5 rounded-full border border-orange-200 text-sm text-orange-600 bg-orange-50">{s}</span>
-                                                 ))}
-                                          </div>
-                                   </div>
+                            <SectionLabel className="bg-orange-100 text-orange-600 mb-3">Fit Job Families</SectionLabel>
+                            <div className="mt-2">
+                                   <p className="text-sm text-gray-600">{diagnosticReport?.fit_job_families || "Information not available"}</p>
                             </div>
                      </div>
 
@@ -312,7 +331,7 @@ function OverviewTab() {
                             <h3 className="text-lg font-bold text-[#1e232c] mb-4">Diagnostic & Career Roadmap</h3>
                             <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden">
                                    {[
-                                          { label: "Diagnostic Interview", rating: 4.5 },
+                                          { label: "Diagnostic Interview", rating: avgRating },
                                           { label: "Resume Review", rating: 4.5 },
                                           { label: "Practice Interview", rating: 4.5 },
                                           { label: "AI Interview Report", rating: null },
@@ -333,32 +352,25 @@ function OverviewTab() {
                                    ))}
                             </Card>
                      </div>
-
-                     {/* Notes from Mentors */}
-                     <div>
-                            <SectionLabel className="bg-red-100 text-red-600 mb-3">Notes from Mentors</SectionLabel>
-                            <div className="space-y-4 mt-2">
-                                   <MentorNote
-                                          name="Priya Sharma"
-                                          role="Technical Mentor"
-                                          date="2024-02-10"
-                                          note="Excellent progress! Keep focusing on system design. Practice more behavioral questions. Your technical skills are improving significantly."
-                                   />
-                                   <MentorNote
-                                          name="Rahul Verma"
-                                          role="Career Coach"
-                                          date="2024-02-15"
-                                          note="Resume looks great. Updated work experience section as discussed. Added quantifiable achievements to make it more impactful."
-                                   />
-                            </div>
-                     </div>
               </div>
        )
 }
 
 // ─── Diagnostic Interview Tab ────────────────────────────────────────
 
-function DiagnosticInterviewTab() {
+function DiagnosticInterviewTab({ report, isLoading }: { report: any; isLoading: boolean }) {
+       if (isLoading) return <div className="p-8 text-center text-gray-500">Loading diagnostic report...</div>
+       if (!report) return <div className="p-8 text-center text-gray-500">No diagnostic report available.</div>
+
+       const scores = report.detailed_scores || {}
+       const chartData = [
+              { label: "Communication", value: parseInt(scores['Clarity of Thoughts : How clearly does the candidate express their thoughts during the interview?  ']) * 20 || 70 },
+              { label: "Soft Skills", value: parseInt(scores['Soft Skills : Does the candidate display the required soft skills (communication, teamwork, problem-solving, etc.)?  ']) * 20 || 75 },
+              { label: "Domain Knowledge", value: parseInt(scores['Domain Knowledge : How well does the candidate demonstrate knowledge in their domain or field of interest?  ']) * 20 || 80 },
+              { label: "Confidence", value: parseInt(scores['Confidence & Emotional Readiness  ']) * 20 || 85 },
+              { label: "Career Clarity", value: parseInt(scores['Has the candidate shown clarity about their past roles and learnings?  Are they able to clearly state what they want to do next? ']) * 20 || 80 },
+       ]
+
        return (
               <div className="space-y-6">
                      {/* Header */}
@@ -366,7 +378,7 @@ function DiagnosticInterviewTab() {
                             <div>
                                    <h2 className="text-xl font-bold text-[#1e232c]">Diagnostic Interview</h2>
                                    <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-1">
-                                          <Calendar className="size-3.5" /> Completed on 2024-01-15
+                                          <Calendar className="size-3.5" /> Completed on {new Date(report.created_at).toLocaleDateString()}
                                    </p>
                             </div>
                             <Link href="/profile/diagnostic-report">
@@ -379,13 +391,7 @@ function DiagnosticInterviewTab() {
                      {/* Parameter-wise rating */}
                      <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
                             <h3 className="font-bold text-[#1e232c] mb-6">Parameter-wise rating</h3>
-                            <BarChart data={[
-                                   { label: "Communication Skills", value: 85 },
-                                   { label: "Technical Skills", value: 78 },
-                                   { label: "Problem Solving", value: 82 },
-                                   { label: "Leadership & Team", value: 75 },
-                                   { label: "Domain Knowledge", value: 88 },
-                            ]} />
+                            <BarChart data={chartData} />
                      </Card>
 
                      {/* Strengths & Development Areas */}
@@ -393,25 +399,13 @@ function DiagnosticInterviewTab() {
                             <div>
                                    <SectionLabel className="bg-green-100 text-green-700 mb-3">Strengths</SectionLabel>
                                    <div className="mt-2">
-                                          <BulletList icon="check" color="text-green-600" items={[
-                                                 "Excellent grasp of data structures and algorithms",
-                                                 "Strong coding skills with clean, maintainable code",
-                                                 "Good understanding of software design patterns",
-                                                 "Enthusiastic learner with growth mindset",
-                                                 "Effective communication of technical concepts",
-                                          ]} />
+                                          <p className="text-sm text-gray-600">{report.strongest_aspects}</p>
                                    </div>
                             </div>
                             <div>
                                    <SectionLabel className="bg-red-100 text-red-600 mb-3">Critical Development Areas</SectionLabel>
                                    <div className="mt-2">
-                                          <BulletList icon="dot" items={[
-                                                 "Needs more practice with system design scenarios",
-                                                 "Should improve confidence in technical discussions",
-                                                 "Time management during problem-solving",
-                                                 "Behavioral response structure needs refinement",
-                                                 "Mock interview practice for real-world scenarios",
-                                          ]} />
+                                          <p className="text-sm text-gray-600">{report.improvement_areas}</p>
                                    </div>
                             </div>
                      </div>
@@ -420,13 +414,15 @@ function DiagnosticInterviewTab() {
                      <div>
                             <SectionLabel className="bg-orange-100 text-orange-600 mb-3">Mentor Summary (by DI)</SectionLabel>
                             <Card className="p-6 rounded-2xl border-gray-100 shadow-sm mt-2">
-                                   <p className="text-sm text-gray-500 mb-1">Mentor Name: <strong className="text-[#1e232c]">Dr. Priya Sharma</strong></p>
-                                   <p className="text-sm text-gray-500 mb-3">Senior Technical Mentor</p>
-                                   <p className="text-sm font-semibold text-[#1e232c] mb-1">Summary:</p>
+                                   <p className="text-sm text-gray-500 mb-1">Mentor Name: <strong className="text-[#1e232c]">{report.mentor_name}</strong></p>
+                                   <p className="text-sm text-gray-500 mb-3">Diagnostic Interviewer</p>
+                                   <p className="text-sm font-semibold text-[#1e232c] mb-1">Targeted Roles:</p>
+                                   <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                                          {report.targeted_roles}
+                                   </p>
+                                   <p className="text-sm font-semibold text-[#1e232c] mb-1">Fitment:</p>
                                    <p className="text-sm text-gray-600 leading-relaxed">
-                                          Strong technical foundation with good communication skills. Shows initiative in problem-solving. Needs to work
-                                          on confidence during technical discussions and presentation skills. Recommended focus areas: System design
-                                          concepts and behavioral preparation.
+                                          Fits best in: {report.fit_job_families}. Backup roles: {report.backup_roles}
                                    </p>
                             </Card>
                      </div>
@@ -701,7 +697,7 @@ function AIInterviewTab() {
                                           "Clear problem-solving approach",
                                    ].map((h, i) => (
                                           <Card key={i} className="p-4 rounded-xl border-gray-100 shadow-sm flex items-center gap-2">
-                                                 <CheckCircle className="size-4 text-green-500 shrink-0" />
+                                                 <CheckCircle key={i} className="size-4 text-green-500 shrink-0" />
                                                  <span className="text-sm text-gray-700">{h}</span>
                                           </Card>
                                    ))}

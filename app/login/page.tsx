@@ -1,19 +1,51 @@
 "use client"
 
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye } from "lucide-react"
+import { Eye, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { createClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
        const router = useRouter()
+       const [isLoading, setIsLoading] = useState(false)
+       const [error, setError] = useState<string | null>(null)
+       const supabase = createClient()
 
-       const handleLogin = (e: React.FormEvent) => {
+       const handleLogin = async (e: React.FormEvent) => {
               e.preventDefault()
-              router.push("/dashboard")
+              setIsLoading(true)
+              setError(null)
+
+              const formData = new FormData(e.currentTarget as HTMLFormElement)
+              const email = formData.get('email') as string
+              const password = formData.get('password') as string
+
+              try {
+                     console.log("Attempting login...")
+                     const { error } = await supabase.auth.signInWithPassword({
+                            email,
+                            password,
+                     })
+
+                     if (error) {
+                            console.error("Login Error:", error.message)
+                            setError(error.message)
+                            return
+                     }
+
+                     console.log("Login successful, redirecting to dashboard...")
+                     router.push("/dashboard")
+              } catch (err) {
+                     console.error("Unexpected login error:", err)
+                     setError("An unexpected error occurred")
+              } finally {
+                     setIsLoading(false)
+              }
        }
 
        return (
@@ -60,11 +92,17 @@ export default function LoginPage() {
 
                                           <TabsContent value="password" className="space-y-6 mt-0">
                                                  <form onSubmit={handleLogin} className="space-y-6">
+                                                        {error && (
+                                                               <div className="bg-red-50 text-red-500 text-sm p-3 rounded-md">
+                                                                      {error}
+                                                               </div>
+                                                        )}
                                                         {/* Email Input */}
                                                         <div className="space-y-2">
                                                                <label className="text-[16px] text-[#0c1421] tracking-[0.16px]">Email</label>
                                                                <Input
                                                                       type="email"
+                                                                      name="email"
                                                                       placeholder="Enter your email"
                                                                       className="h-[56px] bg-[#f7fbff] border-[#d4d7e3] text-[16px] placeholder:text-[#8897ad] rounded-[12px]"
                                                                       required
@@ -77,6 +115,7 @@ export default function LoginPage() {
                                                                <div className="relative">
                                                                       <Input
                                                                              type="password"
+                                                                             name="password"
                                                                              placeholder="Enter your password"
                                                                              className="h-[56px] bg-[#f7fbff] border-[#d4d7e3] text-[16px] placeholder:text-[#8897ad] rounded-[12px] pr-12"
                                                                              required
@@ -95,8 +134,8 @@ export default function LoginPage() {
                                                         </div>
 
                                                         {/* Submit Button */}
-                                                        <Button type="submit" className="w-full h-[56px] text-[20px] bg-[#161616] hover:bg-black/90 rounded-[12px] tracking-[0.2px]">
-                                                               Log in
+                                                        <Button type="submit" disabled={isLoading} className="w-full h-[56px] text-[20px] bg-[#161616] hover:bg-black/90 rounded-[12px] tracking-[0.2px]">
+                                                               {isLoading ? <Loader2 className="animate-spin" /> : "Log in"}
                                                         </Button>
                                                  </form>
                                           </TabsContent>

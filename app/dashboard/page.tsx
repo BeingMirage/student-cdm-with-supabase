@@ -1,9 +1,19 @@
+"use client"
 import { ArrowRight, BookOpen, Briefcase, GraduationCap, LayoutPanelLeft, LineChart, Lock, MessageSquareText, Rocket, Sparkles, TrendingUp, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
+import { useAuth } from "@/components/auth-provider"
 
 export default function DashboardPage() {
+       const { user, profile, isLoading } = useAuth()
+
+       // Get user's first name or default to "User"
+       const firstName = profile?.full_name?.split(' ')[0] || "User"
+       const userInitials = profile?.full_name
+              ? profile.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
+              : "JD"
+
        return (
               <div className="max-w-[1440px] mx-auto p-8 space-y-12 pb-24">
 
@@ -11,13 +21,13 @@ export default function DashboardPage() {
                      <section className="bg-white rounded-[24px] p-10 flex flex-col md:flex-row items-center justify-between shadow-sm border border-gray-100">
                             <div className="flex items-center gap-8">
                                    <div className="w-16 h-16 rounded-full bg-[#FF9E44] flex items-center justify-center text-white text-2xl font-bold">
-                                          JD
+                                          {isLoading ? "..." : userInitials}
                                    </div>
                                    <div className="space-y-1">
                                           <h1 className="text-3xl font-bold text-[#1e232c] flex items-center gap-2">
-                                                 Welcome Back, John! <span className="text-2xl">👋</span>
+                                                 Welcome Back, {isLoading ? "..." : firstName}! <span className="text-2xl">👋</span>
                                           </h1>
-                                          <p className="text-gray-500 font-medium">Senior Frontend Developer</p>
+                                          <p className="text-gray-500 font-medium">{profile?.email || "Student"}</p>
                                           <p className="text-gray-400 text-sm">Here&apos;s your space to explore opportunities and grow faster.</p>
                                    </div>
                             </div>
@@ -230,44 +240,7 @@ export default function DashboardPage() {
                             </div>
                      </div>
 
-                     {/* Personalized Recommendations */}
-                     <section className="bg-white rounded-[24px] p-8 border border-gray-100 shadow-sm space-y-8">
-                            <div className="flex items-center justify-between">
-                                   <div className="flex items-center gap-2">
-                                          <Sparkles className="size-6 text-[#FF9E44]" />
-                                          <h2 className="text-2xl font-bold text-[#1e232c]">Personalized Recommendations</h2>
-                                          <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ml-2">AI-Powered</span>
-                                   </div>
-                            </div>
 
-                            <div className="space-y-4">
-                                   <RecommendationItem
-                                          title="Focus on Communication Skills"
-                                          priority="high"
-                                          description="Based on your profile bottlenecks, improving communication will help with interviews."
-                                          action="View Courses"
-                                          icon={<LineChart className="size-6 text-orange-500" />}
-                                   />
-                                   <RecommendationItem
-                                          title="Advanced Data Analytics Course"
-                                          priority="medium"
-                                          description="Matches your interest in Data Analyst roles and Technology sector."
-                                          action="Enroll Now"
-                                          icon={<BookOpen className="size-6 text-blue-500" />}
-                                   />
-                                   <RecommendationItem
-                                          title="Connect with Sarah Chen"
-                                          priority="high"
-                                          description="Senior Data Analyst at Google - Great match for your career goals."
-                                          action="Book Session"
-                                          icon={<Users className="size-6 text-purple-500" />}
-                                   />
-                            </div>
-
-                            <div className="bg-[#FFF5ED] p-4 rounded-xl flex items-center justify-center gap-2 text-sm text-[#FF9E44] font-medium">
-                                   💡 These recommendations update daily based on your activity and progress
-                            </div>
-                     </section>
 
               </div>
        )
@@ -392,26 +365,4 @@ function UpdateCard({ category, title, time, tag, icon }: any) {
        )
 }
 
-function RecommendationItem({ title, priority, description, action, icon }: any) {
-       return (
-              <div className="flex flex-col md:flex-row items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 gap-6">
-                     <div className="flex items-center gap-6 flex-1 w-full">
-                            <div className="size-12 bg-gray-50 rounded-xl flex items-center justify-center shrink-0">
-                                   {icon}
-                            </div>
-                            <div className="space-y-1">
-                                   <div className="flex items-center gap-3">
-                                          <h5 className="font-bold text-[#1e232c]">{title}</h5>
-                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${priority === "high" ? "bg-red-50 text-red-500" : "bg-yellow-50 text-yellow-600"}`}>
-                                                 {priority}
-                                          </span>
-                                   </div>
-                                   <p className="text-gray-400 text-sm">{description}</p>
-                            </div>
-                     </div>
-                     <Button className="whitespace-nowrap rounded-xl px-6 font-bold bg-black text-white hover:bg-black/90 w-full md:w-auto">
-                            {action}
-                     </Button>
-              </div>
-       )
-}
+
