@@ -98,6 +98,7 @@ export default function ProfilePage() {
        // Fetch diagnostic report
        useEffect(() => {
               const fetchDiagnosticReport = async () => {
+                     if (authLoading) return
                      if (!user) return
                      setIsLoadingReport(true)
                      try {
@@ -122,7 +123,7 @@ export default function ProfilePage() {
               }
 
               fetchDiagnosticReport()
-       }, [user, supabase])
+       }, [user, authLoading])
 
        // Helper: find particular matching a report type
        const findParticular = (type: ReportType): Particular | undefined => {
@@ -386,7 +387,7 @@ function OverviewTab({ diagnosticReport, reportFlags }: { diagnosticReport: any;
                                                  <SectionLabel className="bg-orange-100 text-orange-600 mb-3">Job Targets</SectionLabel>
                                                  <div className="flex flex-wrap gap-2 mt-2">
                                                         {diagnosticReport.targeted_roles.split(',').map((s: string) => (
-                                                               <span key={s} className="px-3 py-1.5 rounded-full border border-[#FF9E44] text-sm text-[#FF9E44]">{s.trim()}</span>
+                                                               <span key={s} className="px-3 py-1.5 rounded-full border border-gray-200 text-sm text-gray-600">{s.trim()}</span>
                                                         ))}
                                                  </div>
                                           </div>
