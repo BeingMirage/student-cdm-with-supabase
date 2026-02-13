@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -9,42 +9,50 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/components/auth-provider"
 
 export default function LoginPage() {
        const router = useRouter()
+       const { user } = useAuth()
        const [isLoading, setIsLoading] = useState(false)
        const [error, setError] = useState<string | null>(null)
+       const [loginAttempted, setLoginAttempted] = useState(false)
        const supabase = createClient()
+
+       // Redirect only after a login attempt succeeds on this page
+       useEffect(() => {
+              if (loginAttempted && user) {
+                     window.location.href = "/dashboard"
+              }
+       }, [loginAttempted, user])
 
        const handleLogin = async (e: React.FormEvent) => {
               e.preventDefault()
               setIsLoading(true)
               setError(null)
+              setLoginAttempted(true)
 
               const formData = new FormData(e.currentTarget as HTMLFormElement)
               const email = formData.get('email') as string
               const password = formData.get('password') as string
 
               try {
-                     console.log("Attempting login...")
                      const { error } = await supabase.auth.signInWithPassword({
                             email,
                             password,
                      })
 
                      if (error) {
-                            console.error("Login Error:", error.message)
                             setError(error.message)
+                            setIsLoading(false)
                             return
                      }
 
-                     console.log("Login successful, redirecting to dashboard...")
-                     router.refresh()
-                     router.push("/dashboard")
+                     // Redirect is handled by the useEffect above
+                     // when AuthProvider detects the SIGNED_IN state
               } catch (err) {
-                     console.error("Unexpected login error:", err)
+                     console.error("Login error:", err)
                      setError("An unexpected error occurred")
-              } finally {
                      setIsLoading(false)
               }
        }
