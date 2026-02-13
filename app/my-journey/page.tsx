@@ -1,8 +1,18 @@
 "use client"
 
-import { Calendar } from "lucide-react"
+import { Calendar, Clock, Users, CheckCircle2, Star, X } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
+import {
+       Dialog,
+       DialogContent,
+       DialogHeader,
+       DialogTitle,
+       DialogFooter,
+       DialogClose,
+       DialogDescription,
+} from "@/components/ui/dialog"
 import { useAuth } from "@/components/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 import { useEffect, useState } from "react"
@@ -19,6 +29,9 @@ export default function MyJourneyPage() {
        const [particulars, setParticulars] = useState<Particular[]>([])
        const [instituteName, setInstituteName] = useState<string | null>(null)
        const [isLoading, setIsLoading] = useState(true)
+       const [selectedParticular, setSelectedParticular] = useState<Particular | null>(null)
+       const [diagnosticReport, setDiagnosticReport] = useState<any>(null)
+       const [isLoadingReport, setIsLoadingReport] = useState(false)
        const supabase = createClient()
 
        useEffect(() => {
@@ -69,6 +82,33 @@ export default function MyJourneyPage() {
 
               fetchParticulars()
        }, [authLoading, profile])
+
+       // Fetch diagnostic report when a diagnostic interview card is clicked
+       const handleCardClick = async (particular: Particular) => {
+              setSelectedParticular(particular)
+              const isDiagnostic = particular.particulars?.toLowerCase().includes('diagnostic interview')
+
+              if (isDiagnostic && !diagnosticReport) {
+                     setIsLoadingReport(true)
+                     try {
+                            const { data, error } = await supabase
+                                   .from('diagnostic_reports')
+                                   .select('*')
+                                   .eq('student_id', profile?.id)
+                                   .order('created_at', { ascending: false })
+                                   .limit(1)
+                                   .maybeSingle()
+
+                            if (!error && data) {
+                                   setDiagnosticReport(data)
+                            }
+                     } catch (err) {
+                            console.error('Error fetching diagnostic report:', err)
+                     } finally {
+                            setIsLoadingReport(false)
+                     }
+              }
+       }
 
        // Compute overall start/end dates from all particulars
        const overallDates = computeOverallDates(particulars)
@@ -174,18 +214,37 @@ export default function MyJourneyPage() {
                      ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                    {particulars.map((p) => (
-                                          <ModuleCard key={p.id} particular={p} />
+                                          <ModuleCard
+                                                 key={p.id}
+                                                 particular={p}
+                                                 onClick={() => handleCardClick(p)}
+                                          />
                                    ))}
                             </div>
                      )}
 
+                     {/* Session Details Dialog */}
+                     <SessionDetailsDialog
+                            particular={selectedParticular}
+                            diagnosticReport={diagnosticReport}
+                            isLoadingReport={isLoadingReport}
+                            open={!!selectedParticular}
+                            onOpenChange={(open) => {
+                                   if (!open) setSelectedParticular(null)
+                            }}
+                     />
               </div>
        )
 }
 
-function ModuleCard({ particular }: { particular: Particular }) {
+// ─── Module Card ──────────────────────────────────────────────────────
+
+function ModuleCard({ particular, onClick }: { particular: Particular; onClick: () => void }) {
        return (
-              <div className="p-6 rounded-[20px] border border-gray-100 bg-white space-y-4 hover:shadow-md transition-shadow">
+              <div
+                     className="p-6 rounded-[20px] border border-gray-100 bg-white space-y-4 hover:shadow-md transition-shadow cursor-pointer"
+                     onClick={onClick}
+              >
                      <div className="space-y-1">
                             <h4 className="font-bold text-[#1e232c] leading-tight">{particular.particulars}</h4>
                      </div>
@@ -211,7 +270,234 @@ function ModuleCard({ particular }: { particular: Particular }) {
        )
 }
 
-function formatDate(dateStr: string): string {
+// ─── Session Details Dialog ───────────────────────────────────────────
+
+function SessionDetailsDialog({
+       particular,
+       diagnosticReport,
+       isLoadingReport,
+       open,
+       onOpenChange,
+}: {
+       particular: Particular | null
+       diagnosticReport: any
+       isLoadingReport: boolean
+       open: boolean
+       onOpenChange: (open: boolean) => void
+}) {
+       if (!particular) return null
+
+       const isDiagnostic = particular.particulars?.toLowerCase().includes('diagnostic interview')
+       const startDate = formatDate(particular.start_date)
+       const endDate = formatDate(particular.end_date)
+
+       return (
+              <Dialog open={open} onOpenChange={onOpenChange}>
+                     <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto p-0 gap-0 rounded-2xl">
+                            {/* Header */}
+                            <DialogHeader className="px-6 py-5 border-b border-gray-200">
+                                   <DialogTitle className="text-2xl font-semibold text-[#0f172b]">
+                                          Session Details
+                                   </DialogTitle>
+                                   <DialogDescription className="sr-only">
+                                          Details for {particular.particulars}
+                                   </DialogDescription>
+                            </DialogHeader>
+
+                            {/* Body */}
+                            <div className="px-6 py-6 space-y-8">
+                                   {/* Session Info Card (orange) */}
+                                   <div className="bg-[#FF9E44]/8 border border-[#ffd4a8] rounded-[14px] p-6 space-y-4">
+                                          <h3 className="text-xl font-semibold text-[#0f172b]">
+                                                 {particular.particulars}
+                                          </h3>
+
+                                          <div className="grid grid-cols-2 gap-4">
+                                                 {startDate && (
+                                                        <div className="flex items-center gap-2">
+                                                               <Calendar className="size-5 text-[#FF9E44]" />
+                                                               <div>
+                                                                      <p className="text-xs text-gray-500">Start Date</p>
+                                                                      <p className="text-base font-medium text-[#0f172b]">{startDate}</p>
+                                                               </div>
+                                                        </div>
+                                                 )}
+                                                 {endDate && (
+                                                        <div className="flex items-center gap-2">
+                                                               <Calendar className="size-5 text-[#FF9E44]" />
+                                                               <div>
+                                                                      <p className="text-xs text-gray-500">End Date</p>
+                                                                      <p className="text-base font-medium text-[#0f172b]">{endDate}</p>
+                                                               </div>
+                                                        </div>
+                                                 )}
+                                                 {isDiagnostic && (
+                                                        <>
+                                                               <div className="flex items-center gap-2">
+                                                                      <Clock className="size-5 text-[#FF9E44]" />
+                                                                      <div>
+                                                                             <p className="text-xs text-gray-500">Duration</p>
+                                                                             <p className="text-base font-medium text-[#0f172b]">1 hour</p>
+                                                                      </div>
+                                                               </div>
+                                                               <div className="flex items-center gap-2">
+                                                                      <Users className="size-5 text-[#FF9E44]" />
+                                                                      <div>
+                                                                             <p className="text-xs text-gray-500">Session Type</p>
+                                                                             <p className="text-base font-medium text-[#0f172b]">1-on-1 Interview</p>
+                                                                      </div>
+                                                               </div>
+                                                        </>
+                                                 )}
+                                          </div>
+                                   </div>
+
+                                   {/* Diagnostic-specific content */}
+                                   {isDiagnostic && (
+                                          <>
+                                                 {/* Mentor Section */}
+                                                 {isLoadingReport ? (
+                                                        <div className="text-center py-4">
+                                                               <p className="text-sm text-gray-400">Loading report data...</p>
+                                                        </div>
+                                                 ) : diagnosticReport?.mentor_name ? (
+                                                        <div className="space-y-4">
+                                                               <h3 className="text-lg font-semibold text-[#0f172b]">Your Mentor</h3>
+                                                               <div className="border border-gray-200 rounded-[14px] p-6 space-y-4">
+                                                                      {/* Mentor Info */}
+                                                                      <div className="flex items-center gap-4">
+                                                                             <div className="size-16 rounded-full bg-gradient-to-b from-[#FF9E44] to-[#ff7e1a] flex items-center justify-center text-white text-2xl font-semibold shrink-0">
+                                                                                    {diagnosticReport.mentor_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+                                                                             </div>
+                                                                             <div>
+                                                                                    <h4 className="text-lg font-semibold text-[#0f172b]">{diagnosticReport.mentor_name}</h4>
+                                                                                    {diagnosticReport.average_rating != null && (
+                                                                                           <div className="flex items-center gap-1 mt-1">
+                                                                                                  <div className="bg-[#fef3e6] text-[#FF9E44] text-xs px-3 py-1 rounded-full flex items-center gap-1">
+                                                                                                         <Star className="size-3 fill-[#FF9E44]" />
+                                                                                                         {diagnosticReport.average_rating.toFixed(1)} rating
+                                                                                                  </div>
+                                                                                           </div>
+                                                                                    )}
+                                                                             </div>
+                                                                      </div>
+
+                                                                      {/* Strongest Aspects as expertise */}
+                                                                      {diagnosticReport.strongest_aspects && (
+                                                                             <div className="space-y-2">
+                                                                                    <p className="text-base font-medium text-[#0f172b]">Key Strengths</p>
+                                                                                    <div className="flex flex-wrap gap-2">
+                                                                                           {diagnosticReport.strongest_aspects.split(',').map((tag: string, i: number) => (
+                                                                                                  <span key={i} className="bg-gray-100 text-[#0f172b] text-sm px-3 py-1.5 rounded-[10px]">
+                                                                                                         {tag.trim()}
+                                                                                                  </span>
+                                                                                           ))}
+                                                                                    </div>
+                                                                             </div>
+                                                                      )}
+
+                                                                      {/* Improvement areas as about */}
+                                                                      {diagnosticReport.improvement_areas && (
+                                                                             <div className="space-y-2">
+                                                                                    <p className="text-base font-medium text-[#0f172b]">Summary</p>
+                                                                                    <p className="text-sm text-gray-500 leading-relaxed">
+                                                                                           {diagnosticReport.improvement_areas}
+                                                                                    </p>
+                                                                             </div>
+                                                                      )}
+                                                               </div>
+                                                        </div>
+                                                 ) : null}
+
+                                                 {/* Session Agenda */}
+                                                 <div className="space-y-4">
+                                                        <h3 className="text-lg font-semibold text-[#0f172b]">Session Agenda</h3>
+                                                        <div className="space-y-3">
+                                                               {DIAGNOSTIC_AGENDA.map((item, i) => (
+                                                                      <div key={i} className="flex gap-3 items-start">
+                                                                             <div className="size-8 rounded-full bg-[#FF9E44] flex items-center justify-center text-white text-sm font-medium shrink-0">
+                                                                                    {i + 1}
+                                                                             </div>
+                                                                             <div>
+                                                                                    <p className="text-base font-medium text-[#0f172b]">{item.title}</p>
+                                                                                    <p className="text-sm text-gray-500">{item.description}</p>
+                                                                             </div>
+                                                                      </div>
+                                                               ))}
+                                                        </div>
+                                                 </div>
+
+                                                 {/* How to Prepare */}
+                                                 <div className="space-y-4">
+                                                        <h3 className="text-lg font-semibold text-[#0f172b]">How to Prepare</h3>
+                                                        <div className="bg-gray-50 border border-gray-200 rounded-[14px] p-5 space-y-3">
+                                                               {DIAGNOSTIC_PREP_TIPS.map((tip, i) => (
+                                                                      <div key={i} className="flex items-start gap-3">
+                                                                             <CheckCircle2 className="size-5 text-[#FF9E44] shrink-0 mt-0.5" />
+                                                                             <p className="text-sm text-gray-500">{tip}</p>
+                                                                      </div>
+                                                               ))}
+                                                        </div>
+                                                 </div>
+                                          </>
+                                   )}
+
+                                   {/* Non-diagnostic: simple info */}
+                                   {!isDiagnostic && (
+                                          <div className="text-center py-4">
+                                                 <p className="text-sm text-gray-400">
+                                                        No additional details available for this session yet.
+                                                 </p>
+                                          </div>
+                                   )}
+                            </div>
+
+                            {/* Footer */}
+                            <DialogFooter className="px-6 py-4 border-t border-gray-200">
+                                   <DialogClose asChild>
+                                          <Button variant="outline" className="w-full rounded-[14px] h-12 text-base font-medium border-gray-200">
+                                                 Close
+                                          </Button>
+                                   </DialogClose>
+                            </DialogFooter>
+                     </DialogContent>
+              </Dialog>
+       )
+}
+
+// ─── Static Content for Diagnostic Interview ─────────────────────────
+
+const DIAGNOSTIC_AGENDA = [
+       {
+              title: "Introduction & Background (10 mins)",
+              description: "Brief overview of your educational background and career aspirations",
+       },
+       {
+              title: "Skills Assessment (20 mins)",
+              description: "Discussion of your current skill set and identification of strengths",
+       },
+       {
+              title: "Career Goals Discussion (15 mins)",
+              description: "Exploration of short-term and long-term career objectives",
+       },
+       {
+              title: "Action Plan & Next Steps (15 mins)",
+              description: "Develop a personalized roadmap and identify immediate action items",
+       },
+]
+
+const DIAGNOSTIC_PREP_TIPS = [
+       "Review your resume and be prepared to discuss your experiences",
+       "Prepare 2-3 questions about career paths in your field of interest",
+       "Have a notepad ready to jot down key insights and action items",
+       "Ensure a stable internet connection and a quiet environment",
+       "Join 5 minutes before the scheduled time to test your audio/video",
+]
+
+// ─── Helpers ──────────────────────────────────────────────────────────
+
+function formatDate(dateStr: string | null | undefined): string | null {
+       if (!dateStr) return null
        // Try parsing YYYY-MM-DD format
        const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/)
        if (isoMatch) {

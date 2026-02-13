@@ -39,6 +39,7 @@ export default function LoginPage() {
                      }
 
                      console.log("Login successful, redirecting to dashboard...")
+                     router.refresh()
                      router.push("/dashboard")
               } catch (err) {
                      console.error("Unexpected login error:", err)
