@@ -1,5 +1,5 @@
 "use client"
-import { ArrowRight, BookOpen, Briefcase, GraduationCap, LayoutPanelLeft, LineChart, Lock, MessageSquareText, Rocket, Sparkles, TrendingUp, Users } from "lucide-react"
+import { ArrowRight, BookOpen, Briefcase, Building2, GraduationCap, LayoutPanelLeft, LineChart, Lock, Mail, MessageSquareText, Phone, Rocket, Sparkles, TrendingUp, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
@@ -20,15 +20,33 @@ export default function DashboardPage() {
                      {/* Welcome Section */}
                      <section className="bg-white rounded-[24px] p-10 flex flex-col md:flex-row items-center justify-between shadow-sm border border-gray-100">
                             <div className="flex items-center gap-8">
-                                   <div className="w-16 h-16 rounded-full bg-[#FF9E44] flex items-center justify-center text-white text-2xl font-bold">
+                                   <div className="w-16 h-16 rounded-full bg-[#FF9E44] flex items-center justify-center text-white text-2xl font-bold shrink-0">
                                           {isLoading ? "..." : userInitials}
                                    </div>
-                                   <div className="space-y-1">
+                                   <div className="space-y-2">
                                           <h1 className="text-3xl font-bold text-[#1e232c] flex items-center gap-2">
                                                  Welcome Back, {isLoading ? "..." : firstName}! <span className="text-2xl">👋</span>
                                           </h1>
-                                          <p className="text-gray-500 font-medium">{profile?.email || "Student"}</p>
-                                          <p className="text-gray-400 text-sm">Here&apos;s your space to explore opportunities and grow faster.</p>
+                                          <div className="flex flex-col gap-1.5">
+                                                 {profile?.institute_name && (
+                                                        <p className="text-gray-600 font-medium flex items-center gap-2">
+                                                               <Building2 className="size-4 text-[#FF9E44]" />
+                                                               {profile.institute_name}
+                                                        </p>
+                                                 )}
+                                                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                                                        <span className="flex items-center gap-1.5">
+                                                               <Mail className="size-4 text-[#FF9E44]" />
+                                                               {profile?.email || "email@example.com"}
+                                                        </span>
+                                                        {profile?.phone_number && (
+                                                               <span className="flex items-center gap-1.5">
+                                                                      <Phone className="size-4 text-[#FF9E44]" />
+                                                                      {profile.phone_number}
+                                                               </span>
+                                                        )}
+                                                 </div>
+                                          </div>
                                    </div>
                             </div>
 

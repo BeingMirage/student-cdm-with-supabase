@@ -2,6 +2,7 @@
 
 import { Calendar } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/components/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 import { useEffect, useState } from "react"
@@ -72,9 +73,16 @@ export default function MyJourneyPage() {
        // Compute overall start/end dates from all particulars
        const overallDates = computeOverallDates(particulars)
 
+       // Since all DB particulars are completed, everything = completed
+       const totalSessions = particulars.length
+       const completedSessions = totalSessions
+       const inProgressSessions = 0
+       const upcomingSessions = 0
+       const progressPercent = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0
+
        if (authLoading || isLoading) {
               return (
-                     <div className="max-w-[1440px] mx-auto p-8 flex items-center justify-center min-h-[60vh]">
+                     <div className="max-w-[1440px] mx-auto p-4 sm:p-8 flex items-center justify-center min-h-[60vh]">
                             <p className="text-gray-400 text-lg">Loading your journey...</p>
                      </div>
               )
@@ -82,33 +90,72 @@ export default function MyJourneyPage() {
 
        if (!instituteName) {
               return (
-                     <div className="max-w-[1440px] mx-auto p-8 flex items-center justify-center min-h-[60vh]">
+                     <div className="max-w-[1440px] mx-auto p-4 sm:p-8 flex items-center justify-center min-h-[60vh]">
                             <p className="text-gray-400 text-lg">No institute assigned to your profile.</p>
                      </div>
               )
        }
 
        return (
-              <div className="max-w-[1440px] mx-auto p-8 space-y-8 pb-24">
+              <div className="max-w-[1440px] mx-auto p-4 sm:p-8 space-y-6 sm:space-y-8 pb-24">
 
                      {/* Program Summary Card */}
-                     <Card className="bg-[#FFF5ED] border-[#FF9E44]/20 p-8 rounded-[24px]">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-[#FF9E44]/20">
+                     <Card className="bg-[#FFF5ED] border-[#FF9E44]/20 p-4 sm:p-8 rounded-[16px] sm:rounded-[24px]">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 text-center md:divide-x divide-[#FF9E44]/20">
                                    <div>
                                           <p className="text-[#FF9E44] text-xs font-bold uppercase tracking-wider mb-2">Total Modules</p>
-                                          <p className="text-3xl font-bold text-[#1e232c]">{particulars.length}</p>
+                                          <p className="text-2xl sm:text-3xl font-bold text-[#1e232c]">{particulars.length}</p>
                                    </div>
                                    <div>
                                           <p className="text-[#FF9E44] text-xs font-bold uppercase tracking-wider mb-2">Institute</p>
-                                          <p className="text-lg font-bold text-[#1e232c] leading-tight">{instituteName}</p>
+                                          <p className="text-sm sm:text-lg font-bold text-[#1e232c] leading-tight">{instituteName}</p>
                                    </div>
                                    <div>
                                           <p className="text-[#FF9E44] text-xs font-bold uppercase tracking-wider mb-2">Start Date</p>
-                                          <p className="text-xl font-bold text-[#1e232c]">{overallDates.start || '—'}</p>
+                                          <p className="text-lg sm:text-xl font-bold text-[#1e232c]">{overallDates.start || '—'}</p>
                                    </div>
                                    <div>
                                           <p className="text-[#FF9E44] text-xs font-bold uppercase tracking-wider mb-2">End Date</p>
-                                          <p className="text-xl font-bold text-[#1e232c]">{overallDates.end || '—'}</p>
+                                          <p className="text-lg sm:text-xl font-bold text-[#1e232c]">{overallDates.end || '—'}</p>
+                                   </div>
+                            </div>
+                     </Card>
+
+                     {/* Your Progress Card */}
+                     <Card className="border-gray-200 p-5 sm:p-8 rounded-[16px]">
+                            {/* Header row */}
+                            <div className="flex items-start justify-between mb-4">
+                                   <div>
+                                          <h3 className="text-lg font-semibold text-[#0f172b]">Your Progress</h3>
+                                          <p className="text-sm text-gray-500 mt-0.5">
+                                                 {completedSessions} of {totalSessions} sessions completed
+                                          </p>
+                                   </div>
+                                   <p className="text-[28px] sm:text-[30px] font-semibold text-[#0f172b] leading-none">
+                                          {progressPercent}%
+                                   </p>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <Progress
+                                   value={progressPercent}
+                                   className="h-2 bg-[#e5e7eb] rounded-full"
+                                   indicatorClassName="bg-[#374151]"
+                            />
+
+                            {/* Stat Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mt-6">
+                                   <div className="border border-gray-200 rounded-[14px] p-4 text-center">
+                                          <p className="text-2xl font-semibold text-[#0f172b]">{completedSessions}</p>
+                                          <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mt-1">Completed</p>
+                                   </div>
+                                   <div className="border border-gray-200 rounded-[14px] p-4 text-center">
+                                          <p className="text-2xl font-semibold text-[#0f172b]">{inProgressSessions}</p>
+                                          <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mt-1">In Progress</p>
+                                   </div>
+                                   <div className="border border-gray-200 rounded-[14px] p-4 text-center">
+                                          <p className="text-2xl font-semibold text-[#0f172b]">{upcomingSessions}</p>
+                                          <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mt-1">Upcoming</p>
                                    </div>
                             </div>
                      </Card>
@@ -116,7 +163,7 @@ export default function MyJourneyPage() {
                      {/* Title */}
                      <div className="text-center space-y-2">
                             <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">{instituteName}</p>
-                            <h1 className="text-4xl font-bold text-[#1e232c]">Career Development Module</h1>
+                            <h1 className="text-2xl sm:text-4xl font-bold text-[#1e232c]">Career Development Module</h1>
                      </div>
 
                      {/* Module Cards Grid */}
@@ -125,7 +172,7 @@ export default function MyJourneyPage() {
                                    <p className="text-gray-400 text-lg">No modules found for your institute.</p>
                             </div>
                      ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                    {particulars.map((p) => (
                                           <ModuleCard key={p.id} particular={p} />
                                    ))}
