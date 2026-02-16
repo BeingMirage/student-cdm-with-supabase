@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import {
        Mail, Phone, MapPin, FileText, Download, Share2,
        CheckCircle2, Star, Calendar, ExternalLink,
-       Clock, AlertCircle
+       Clock, AlertCircle, ChevronDown
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
@@ -148,49 +148,59 @@ export default function ProfilePage() {
        return (
               <div className="min-h-screen bg-[#F8F9FB]">
                      {/* Page Header */}
-                     <div className="max-w-[1400px] mx-auto px-8">
+                     <div className="max-w-[1400px] mx-auto px-4 md:px-8">
                             <div className="flex items-center justify-between py-4">
                                    <div>
-                                          <h1 className="text-2xl font-bold text-[#1e232c]">Student File</h1>
-                                          <p className="text-sm text-[#FF9E44]">Comprehensive student profile and progress tracking</p>
+                                          <h1 className="text-xl md:text-2xl font-bold text-[#1e232c]">Student File</h1>
+                                          <p className="text-xs md:text-sm text-[#FF9E44]">Comprehensive student profile and progress tracking</p>
                                    </div>
-                                   <div className="flex items-center gap-3">
-                                          <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-200">
+                                   <div className="flex items-center gap-2 md:gap-3">
+                                          <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-200 hidden sm:flex">
                                                  <FileText className="size-4" /> View Resume
                                           </Button>
-                                          <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-200">
+                                          <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-200 hidden sm:flex">
                                                  <Download className="size-4" /> Download
                                           </Button>
-                                          <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-200">
+                                          <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-200 hidden sm:flex">
                                                  <Share2 className="size-4" /> Share
+                                          </Button>
+                                          {/* Mobile: icon-only buttons */}
+                                          <Button variant="outline" size="icon" className="rounded-lg border-gray-200 sm:hidden">
+                                                 <FileText className="size-4" />
+                                          </Button>
+                                          <Button variant="outline" size="icon" className="rounded-lg border-gray-200 sm:hidden">
+                                                 <Download className="size-4" />
+                                          </Button>
+                                          <Button variant="outline" size="icon" className="rounded-lg border-gray-200 sm:hidden">
+                                                 <Share2 className="size-4" />
                                           </Button>
                                    </div>
                             </div>
 
                             {/* Student Info */}
-                            <div className="flex items-center gap-5 pb-6">
-                                   <div className="size-16 rounded-full bg-[#FFF5ED] border-2 border-[#FF9E44] flex items-center justify-center text-[#FF9E44] text-xl font-bold shrink-0">
+                            <div className="flex items-center gap-4 md:gap-5 pb-6">
+                                   <div className="size-12 md:size-16 rounded-full bg-[#FFF5ED] border-2 border-[#FF9E44] flex items-center justify-center text-[#FF9E44] text-base md:text-xl font-bold shrink-0">
                                           {profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || "ST"}
                                    </div>
-                                   <div>
-                                          <h2 className="text-xl font-bold text-[#1e232c]">{profile?.full_name || "Student Name"}</h2>
-                                          <p className="text-sm text-gray-500">{profile?.institute_name || "Institute"} • Student Profile</p>
-                                          <p className="text-sm text-[#FF9E44] font-medium">2025 • Student</p>
-                                          <div className="flex items-center gap-5 mt-1 text-xs text-gray-500">
-                                                 <span className="flex items-center gap-1"><Mail className="size-3" /> {profile?.email || "email@institute.ac.in"}</span>
-                                                 <span className="flex items-center gap-1"><Phone className="size-3" /> {profile?.phone_number || "+91 --- --- ----"}</span>
-                                                 <span className="flex items-center gap-1"><MapPin className="size-3" /> India</span>
+                                   <div className="min-w-0">
+                                          <h2 className="text-lg md:text-xl font-bold text-[#1e232c] truncate">{profile?.full_name || "Student Name"}</h2>
+                                          <p className="text-xs md:text-sm text-gray-500 truncate">{profile?.institute_name || "Institute"} • Student Profile</p>
+                                          <p className="text-xs md:text-sm text-[#FF9E44] font-medium">2025 • Student</p>
+                                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
+                                                 <span className="flex items-center gap-1"><Mail className="size-3" /> <span className="truncate max-w-[140px] sm:max-w-none">{profile?.email || "email@institute.ac.in"}</span></span>
+                                                 <span className="flex items-center gap-1 hidden sm:flex"><Phone className="size-3" /> {profile?.phone_number || "+91 --- --- ----"}</span>
+                                                 <span className="flex items-center gap-1 hidden sm:flex"><MapPin className="size-3" /> India</span>
                                           </div>
                                    </div>
                             </div>
 
-                            {/* Tab Navigation */}
-                            <div className="flex items-center gap-1 border-b border-gray-200">
+                            {/* Tab Navigation — scrollable on mobile */}
+                            <div className="flex items-center gap-1 border-b border-gray-200 overflow-x-auto no-scrollbar">
                                    {activeTabs.map((tab) => (
                                           <button
                                                  key={tab}
                                                  onClick={() => setActiveTab(tab)}
-                                                 className={`px-5 py-3 text-sm font-medium rounded-t-lg transition-colors ${activeTab === tab
+                                                 className={`px-4 md:px-5 py-2.5 md:py-3 text-xs md:text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap shrink-0 ${activeTab === tab
                                                         ? "bg-[#FF9E44] text-white"
                                                         : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                                                         }`}
@@ -202,10 +212,15 @@ export default function ProfilePage() {
                      </div>
 
                      {/* Content */}
-                     <div className="max-w-[1400px] mx-auto px-8 py-8">
-                            <div className="flex gap-8">
-                                   {/* Left Sidebar */}
-                                   <div className="w-[240px] shrink-0 space-y-6">
+                     <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-6 md:py-8">
+                            {/* Mobile Journey Dropdown — visible only below lg */}
+                            <div className="lg:hidden mb-6">
+                                   <MobileJourneyDropdown journeyItems={journeyItems} isLoading={isLoadingParticulars} />
+                            </div>
+
+                            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+                                   {/* Left Sidebar — hidden on mobile, shown on lg+ */}
+                                   <div className="hidden lg:block w-[240px] shrink-0 space-y-6">
                                           <Sidebar journeyItems={journeyItems} isLoading={isLoadingParticulars} />
                                    </div>
 
@@ -257,6 +272,56 @@ function Sidebar({ journeyItems, isLoading }: { journeyItems: { title: string; c
        )
 }
 
+// ─── Mobile Journey Dropdown ─────────────────────────────────────────
+
+function MobileJourneyDropdown({ journeyItems, isLoading }: { journeyItems: { title: string; color: string; status: string }[]; isLoading: boolean }) {
+       const [isOpen, setIsOpen] = useState(false)
+
+       return (
+              <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden">
+                     <button
+                            onClick={() => setIsOpen(prev => !prev)}
+                            className="flex items-center justify-between w-full p-4 text-left"
+                     >
+                            <h3 className="font-bold text-[#1e232c]">Student Journey</h3>
+                            <ChevronDown className={`size-5 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                     </button>
+
+                     <div
+                            className="transition-all duration-300 ease-in-out overflow-hidden"
+                            style={{ maxHeight: isOpen ? "500px" : "0px" }}
+                     >
+                            <div className="px-4 pb-4">
+                                   {isLoading ? (
+                                          <p className="text-sm text-gray-400">Loading...</p>
+                                   ) : journeyItems.length === 0 ? (
+                                          <p className="text-sm text-gray-400">No journey items found for this institute.</p>
+                                   ) : (
+                                          <div className="relative">
+                                                 <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-100" />
+                                                 <div className="space-y-4">
+                                                        {journeyItems.map((item, i) => (
+                                                               <div key={i} className="flex gap-3 relative">
+                                                                      <div className={`size-6 rounded-full ${item.color} shrink-0 z-10 flex items-center justify-center`}>
+                                                                             <CheckCircle2 className="size-3 text-white" />
+                                                                      </div>
+                                                                      <div className="min-w-0">
+                                                                             <p className="text-sm font-semibold text-[#1e232c] leading-tight">{item.title}</p>
+                                                                             <span className="inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+                                                                                    {item.status}
+                                                                             </span>
+                                                                      </div>
+                                                               </div>
+                                                        ))}
+                                                 </div>
+                                          </div>
+                                   )}
+                            </div>
+                     </div>
+              </Card>
+       )
+}
+
 // ─── Helper Components ───────────────────────────────────────────────
 
 function SectionLabel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -269,7 +334,7 @@ function SectionLabel({ children, className = "" }: { children: React.ReactNode;
 
 function BarChart({ data }: { data: { label: string; value: number }[] }) {
        return (
-              <div className="grid grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
                      {data.map((d, i) => (
                             <div key={i} className="flex flex-col items-center">
                                    <div className="w-full h-40 bg-orange-50 rounded-xl relative overflow-hidden flex items-end">
@@ -335,7 +400,7 @@ function OverviewTab({ diagnosticReport, reportFlags }: { diagnosticReport: any;
 
                      {/* Stats Row - only if diagnostic data exists */}
                      {hasDiagnostic && (
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                    {avgRating != null && (
                                           <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
                                                  <p className="text-xs text-gray-400 mb-2">Average Rating of Learner</p>
@@ -373,7 +438,7 @@ function OverviewTab({ diagnosticReport, reportFlags }: { diagnosticReport: any;
 
                      {/* Strongest Aspects & Job Targets - only from diagnostic report */}
                      {hasDiagnostic && (diagnosticReport.strongest_aspects || diagnosticReport.targeted_roles) && (
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                    {diagnosticReport.strongest_aspects && (
                                           <div>
                                                  <SectionLabel className="bg-orange-100 text-orange-600 mb-3">Strongest Aspects</SectionLabel>
@@ -513,7 +578,7 @@ function DiagnosticInterviewTab({ report, isLoading, particular }: { report: any
 
                      {/* Strengths & Development Areas - only if data exists */}
                      {(report.strongest_aspects || report.improvement_areas) && (
-                            <div className="grid grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                    {report.strongest_aspects && (
                                           <div>
                                                  <SectionLabel className="bg-green-100 text-green-700 mb-3">Strengths</SectionLabel>
