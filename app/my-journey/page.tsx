@@ -1,6 +1,6 @@
 "use client"
 
-import { Calendar, Clock, Users, CheckCircle2, Star, X } from "lucide-react"
+import { Calendar, Clock, Users, CheckCircle2, Star, X, Info } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
@@ -16,28 +16,48 @@ import {
 import { useAuth } from "@/components/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
-type Particular = {
+// Updated type to reflect the joined data structure
+type JourneyItem = {
        id: string
        particulars: string
        start_date: string | null
        end_date: string | null
+       status: string | null
+       delivery_mode: string | null
+       total_hours: number | null
+       // Joined data
+       cdm_products?: {
+              product_code: string
+              cdm_modules?: {
+                     description: string | null
+                     category: string | null
+                     mode: string | null
+              }
+       }
 }
 
 export default function MyJourneyPage() {
        const { profile, isLoading: authLoading } = useAuth()
-       const [particulars, setParticulars] = useState<Particular[]>([])
+       const [particulars, setParticulars] = useState<JourneyItem[]>([])
        const [instituteName, setInstituteName] = useState<string | null>(null)
        const [isLoading, setIsLoading] = useState(true)
-       const [selectedParticular, setSelectedParticular] = useState<Particular | null>(null)
+       const [selectedParticular, setSelectedParticular] = useState<JourneyItem | null>(null)
        const [diagnosticReport, setDiagnosticReport] = useState<any>(null)
        const [isLoadingReport, setIsLoadingReport] = useState(false)
        const supabase = createClient()
+       const router = useRouter()
 
        useEffect(() => {
-              if (authLoading || !profile) return
+              if (authLoading) return
 
-              const fetchParticulars = async () => {
+              if (!profile) {
+                     router.push('/login')
+                     return
+              }
+
+              const fetchJourneyItems = async () => {
                      setIsLoading(true)
                      try {
                             const instName = profile.institute_name
@@ -48,9 +68,9 @@ export default function MyJourneyPage() {
 
                             setInstituteName(instName)
 
-                            // Get institute ID
+                            // Get institute ID from cdm_institutes
                             const { data: institute, error: instError } = await supabase
-                                   .from('institutes')
+                                   .from('cdm_institutes')
                                    .select('id')
                                    .eq('name', instName)
                                    .maybeSingle()
@@ -61,17 +81,47 @@ export default function MyJourneyPage() {
                                    return
                             }
 
-                            // Get all particulars for this institute
-                            const { data: parts, error: partsError } = await supabase
-                                   .from('institute_particulars')
-                                   .select('id, particulars, start_date, end_date')
+                            // Get learning journeys for this institute
+                            const { data: journeys } = await supabase
+                                   .from('cdm_learning_journeys')
+                                   .select('id')
                                    .eq('institute_id', institute.id)
-                                   .order('created_at', { ascending: true })
+                                   .eq('status', 'Active') // Optional: only active journeys
 
-                            if (partsError) {
-                                   console.error('Error fetching particulars:', partsError.message)
+                            if (!journeys || journeys.length === 0) {
+                                   setIsLoading(false)
+                                   return
+                            }
+
+                            const journeyIds = journeys.map(j => j.id)
+
+                            // Get all journey items (particulars) with joined product/module info
+                            const { data: items, error: itemsError } = await supabase
+                                   .from('cdm_learning_journey_items')
+                                   .select(`
+                                          id,
+                                          particulars,
+                                          start_date,
+                                          end_date,
+                                          status,
+                                          delivery_mode,
+                                          total_hours,
+                                          cdm_products (
+                                                 product_code,
+                                                 cdm_modules (
+                                                        description,
+                                                        category,
+                                                        mode
+                                                 )
+                                          )
+                                   `)
+                                   .in('learning_journey_id', journeyIds)
+                                   .order('start_date', { ascending: true })
+
+                            if (itemsError) {
+                                   console.error('Error fetching journey items:', itemsError.message)
                             } else {
-                                   setParticulars(parts || [])
+                                   setParticulars(items as unknown as JourneyItem[] || [])
                             }
                      } catch (err) {
                             console.error('Unexpected error:', err)
@@ -80,27 +130,47 @@ export default function MyJourneyPage() {
                      }
               }
 
-              fetchParticulars()
-       }, [authLoading, profile])
+              fetchJourneyItems()
+       }, [authLoading, profile, router])
 
        // Fetch diagnostic report when a diagnostic interview card is clicked
-       const handleCardClick = async (particular: Particular) => {
-              setSelectedParticular(particular)
-              const isDiagnostic = particular.particulars?.toLowerCase().includes('diagnostic interview')
+       const handleCardClick = async (item: JourneyItem) => {
+              setSelectedParticular(item)
+              // Ideally check product_code or module category, but fallback to string matching
+              const isDiagnostic = item.particulars?.toLowerCase().includes('diagnostic interview') ||
+                     item.cdm_products?.cdm_modules?.category?.toLowerCase() === 'diagnostic'
 
               if (isDiagnostic && !diagnosticReport) {
                      setIsLoadingReport(true)
                      try {
-                            const { data, error } = await supabase
-                                   .from('diagnostic_reports')
-                                   .select('*')
+                            // Find journey sessions for this student
+                            const { data: sessions } = await supabase
+                                   .from('cdm_journey_sessions')
+                                   .select('id')
                                    .eq('student_id', profile?.id)
-                                   .order('created_at', { ascending: false })
-                                   .limit(1)
-                                   .maybeSingle()
 
-                            if (!error && data) {
-                                   setDiagnosticReport(data)
+                            if (sessions && sessions.length > 0) {
+                                   const sessionIds = sessions.map(s => s.id)
+
+                                   const { data, error } = await supabase
+                                          .from('cdm_student_reports')
+                                          .select('*')
+                                          .in('session_id', sessionIds)
+                                          .order('created_at', { ascending: false })
+                                          .limit(1)
+                                          .maybeSingle()
+
+                                   if (!error && data) {
+                                          // Flatten report_data fields for backward-compatible access
+                                          const rd = data.report_data || {}
+                                          setDiagnosticReport({
+                                                 ...data,
+                                                 mentor_name: rd.meta?.mentor_name,
+                                                 average_rating: rd.meta?.overall_rating,
+                                                 improvement_areas: rd.feedback_summary?.areas_for_improvement,
+                                                 strongest_aspects: rd.feedback_summary?.strongest_aspects,
+                                          })
+                                   }
                             }
                      } catch (err) {
                             console.error('Error fetching diagnostic report:', err)
@@ -113,11 +183,14 @@ export default function MyJourneyPage() {
        // Compute overall start/end dates from all particulars
        const overallDates = computeOverallDates(particulars)
 
-       // Since all DB particulars are completed, everything = completed
+       // Calculate stats
        const totalSessions = particulars.length
-       const completedSessions = totalSessions
-       const inProgressSessions = 0
-       const upcomingSessions = 0
+       // Assuming 'Completed' status in DB, or past end_date
+       const completedSessions = particulars.filter(p =>
+              p.status === 'Completed' || (p.end_date && new Date(p.end_date) < new Date())
+       ).length
+       const inProgressSessions = particulars.filter(p => p.status === 'In Progress').length
+       const upcomingSessions = totalSessions - completedSessions - inProgressSessions
        const progressPercent = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0
 
        if (authLoading || isLoading) {
@@ -216,7 +289,7 @@ export default function MyJourneyPage() {
                                    {particulars.map((p) => (
                                           <ModuleCard
                                                  key={p.id}
-                                                 particular={p}
+                                                 item={p}
                                                  onClick={() => handleCardClick(p)}
                                           />
                                    ))}
@@ -225,7 +298,7 @@ export default function MyJourneyPage() {
 
                      {/* Session Details Dialog */}
                      <SessionDetailsDialog
-                            particular={selectedParticular}
+                            item={selectedParticular}
                             diagnosticReport={diagnosticReport}
                             isLoadingReport={isLoadingReport}
                             open={!!selectedParticular}
@@ -239,32 +312,47 @@ export default function MyJourneyPage() {
 
 // ─── Module Card ──────────────────────────────────────────────────────
 
-function ModuleCard({ particular, onClick }: { particular: Particular; onClick: () => void }) {
+function ModuleCard({ item, onClick }: { item: JourneyItem; onClick: () => void }) {
+       const statusColor =
+              item.status === 'Completed' ? 'text-green-600 bg-green-50' :
+                     item.status === 'In Progress' ? 'text-blue-600 bg-blue-50' :
+                            'text-gray-500 bg-gray-50'
+
        return (
               <div
-                     className="p-6 rounded-[20px] border border-gray-100 bg-white space-y-4 hover:shadow-md transition-shadow cursor-pointer"
+                     className="p-6 rounded-[20px] border border-gray-100 bg-white space-y-4 hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between h-full"
                      onClick={onClick}
               >
-                     <div className="space-y-1">
-                            <h4 className="font-bold text-[#1e232c] leading-tight">{particular.particulars}</h4>
+                     <div className="space-y-3">
+                            <div className="flex justify-between items-start gap-2">
+                                   <h4 className="font-bold text-[#1e232c] leading-tight text-lg">{item.particulars}</h4>
+                                   {item.status && (
+                                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full shrink-0 ${statusColor}`}>
+                                                 {item.status}
+                                          </span>
+                                   )}
+                            </div>
+                            {item.cdm_products?.cdm_modules?.description && (
+                                   <p className="text-sm text-gray-500 line-clamp-2">
+                                          {item.cdm_products.cdm_modules.description}
+                                   </p>
+                            )}
                      </div>
 
-                     <div className="flex items-center gap-4 text-xs text-gray-500 font-medium">
-                            {particular.start_date && (
-                                   <span className="flex items-center gap-1.5">
-                                          <Calendar className="size-3" />
-                                          Start: {formatDate(particular.start_date)}
-                                   </span>
-                            )}
-                            {particular.end_date && (
-                                   <span className="flex items-center gap-1.5">
-                                          <Calendar className="size-3" />
-                                          End: {formatDate(particular.end_date)}
-                                   </span>
-                            )}
-                            {!particular.start_date && !particular.end_date && (
-                                   <span className="text-gray-400">Dates TBD</span>
-                            )}
+                     <div className="pt-4 border-t border-gray-50 flex items-center justify-between text-xs text-gray-500 font-medium mt-auto">
+                            <div className="flex flex-col gap-1">
+                                   {item.start_date && (
+                                          <span className="flex items-center gap-1.5">
+                                                 <Calendar className="size-3" />
+                                                 {formatDate(item.start_date)}
+                                          </span>
+                                   )}
+                            </div>
+                            <div className="flex flex-col gap-1 items-end">
+                                   {item.delivery_mode && (
+                                          <span>{item.delivery_mode}</span>
+                                   )}
+                            </div>
                      </div>
               </div>
        )
@@ -273,81 +361,106 @@ function ModuleCard({ particular, onClick }: { particular: Particular; onClick: 
 // ─── Session Details Dialog ───────────────────────────────────────────
 
 function SessionDetailsDialog({
-       particular,
+       item,
        diagnosticReport,
        isLoadingReport,
        open,
        onOpenChange,
 }: {
-       particular: Particular | null
+       item: JourneyItem | null
        diagnosticReport: any
        isLoadingReport: boolean
        open: boolean
        onOpenChange: (open: boolean) => void
 }) {
-       if (!particular) return null
+       if (!item) return null
 
-       const isDiagnostic = particular.particulars?.toLowerCase().includes('diagnostic interview')
-       const startDate = formatDate(particular.start_date)
-       const endDate = formatDate(particular.end_date)
+       const isDiagnostic = item.particulars?.toLowerCase().includes('diagnostic interview') ||
+              item.cdm_products?.cdm_modules?.category?.toLowerCase() === 'diagnostic'
+
+       const startDate = formatDate(item.start_date)
+       const endDate = formatDate(item.end_date)
+       const description = item.cdm_products?.cdm_modules?.description
+       const moduleMode = item.cdm_products?.cdm_modules?.mode
 
        return (
               <Dialog open={open} onOpenChange={onOpenChange}>
-                     <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto p-0 gap-0 rounded-2xl">
+                     <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-0 gap-0 rounded-2xl">
                             {/* Header */}
                             <DialogHeader className="px-6 py-5 border-b border-gray-200">
                                    <DialogTitle className="text-2xl font-semibold text-[#0f172b]">
                                           Session Details
                                    </DialogTitle>
                                    <DialogDescription className="sr-only">
-                                          Details for {particular.particulars}
+                                          Details for {item.particulars}
                                    </DialogDescription>
                             </DialogHeader>
 
                             {/* Body */}
                             <div className="px-6 py-6 space-y-8">
                                    {/* Session Info Card (orange) */}
-                                   <div className="bg-[#FF9E44]/8 border border-[#ffd4a8] rounded-[14px] p-6 space-y-4">
-                                          <h3 className="text-xl font-semibold text-[#0f172b]">
-                                                 {particular.particulars}
-                                          </h3>
+                                   <div className="bg-[#FF9E44]/5 border border-[#ffd4a8]/50 rounded-[16px] p-6 space-y-5">
+                                          <div>
+                                                 <h3 className="text-xl font-bold text-[#0f172b] mb-2">
+                                                        {item.particulars}
+                                                 </h3>
+                                                 {item.status && (
+                                                        <span className="inline-block bg-white text-[#FF9E44] border border-[#FF9E44]/20 text-xs font-bold px-3 py-1 rounded-full">
+                                                               {item.status}
+                                                        </span>
+                                                 )}
+                                          </div>
 
-                                          <div className="grid grid-cols-2 gap-4">
+                                          {description && (
+                                                 <p className="text-sm text-gray-600 leading-relaxed">
+                                                        {description}
+                                                 </p>
+                                          )}
+
+                                          <div className="grid grid-cols-2 gap-y-4 gap-x-8 pt-2">
                                                  {startDate && (
-                                                        <div className="flex items-center gap-2">
-                                                               <Calendar className="size-5 text-[#FF9E44]" />
+                                                        <div className="flex items-start gap-3">
+                                                               <div className="size-8 rounded-full bg-white border border-[#FF9E44]/20 flex items-center justify-center shrink-0">
+                                                                      <Calendar className="size-4 text-[#FF9E44]" />
+                                                               </div>
                                                                <div>
-                                                                      <p className="text-xs text-gray-500">Start Date</p>
-                                                                      <p className="text-base font-medium text-[#0f172b]">{startDate}</p>
+                                                                      <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Start Date</p>
+                                                                      <p className="text-sm font-semibold text-[#0f172b]">{startDate}</p>
                                                                </div>
                                                         </div>
                                                  )}
-                                                 {endDate && (
-                                                        <div className="flex items-center gap-2">
-                                                               <Calendar className="size-5 text-[#FF9E44]" />
+                                                 {item.total_hours && (
+                                                        <div className="flex items-start gap-3">
+                                                               <div className="size-8 rounded-full bg-white border border-[#FF9E44]/20 flex items-center justify-center shrink-0">
+                                                                      <Clock className="size-4 text-[#FF9E44]" />
+                                                               </div>
                                                                <div>
-                                                                      <p className="text-xs text-gray-500">End Date</p>
-                                                                      <p className="text-base font-medium text-[#0f172b]">{endDate}</p>
+                                                                      <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Duration</p>
+                                                                      <p className="text-sm font-semibold text-[#0f172b]">{item.total_hours} Hours</p>
                                                                </div>
                                                         </div>
                                                  )}
-                                                 {isDiagnostic && (
-                                                        <>
-                                                               <div className="flex items-center gap-2">
-                                                                      <Clock className="size-5 text-[#FF9E44]" />
-                                                                      <div>
-                                                                             <p className="text-xs text-gray-500">Duration</p>
-                                                                             <p className="text-base font-medium text-[#0f172b]">1 hour</p>
-                                                                      </div>
+                                                 {item.delivery_mode && (
+                                                        <div className="flex items-start gap-3">
+                                                               <div className="size-8 rounded-full bg-white border border-[#FF9E44]/20 flex items-center justify-center shrink-0">
+                                                                      <Info className="size-4 text-[#FF9E44]" />
                                                                </div>
-                                                               <div className="flex items-center gap-2">
-                                                                      <Users className="size-5 text-[#FF9E44]" />
-                                                                      <div>
-                                                                             <p className="text-xs text-gray-500">Session Type</p>
-                                                                             <p className="text-base font-medium text-[#0f172b]">1-on-1 Interview</p>
-                                                                      </div>
+                                                               <div>
+                                                                      <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Mode</p>
+                                                                      <p className="text-sm font-semibold text-[#0f172b]">{item.delivery_mode}</p>
                                                                </div>
-                                                        </>
+                                                        </div>
+                                                 )}
+                                                 {moduleMode && (
+                                                        <div className="flex items-start gap-3">
+                                                               <div className="size-8 rounded-full bg-white border border-[#FF9E44]/20 flex items-center justify-center shrink-0">
+                                                                      <Users className="size-4 text-[#FF9E44]" />
+                                                               </div>
+                                                               <div>
+                                                                      <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Type</p>
+                                                                      <p className="text-sm font-semibold text-[#0f172b]">{moduleMode}</p>
+                                                               </div>
+                                                        </div>
                                                  )}
                                           </div>
                                    </div>
@@ -358,25 +471,24 @@ function SessionDetailsDialog({
                                                  {/* Mentor Section */}
                                                  {isLoadingReport ? (
                                                         <div className="text-center py-4">
-                                                               <p className="text-sm text-gray-400">Loading report data...</p>
+                                                               <p className="text-sm text-gray-400 animate-pulse">Loading report data...</p>
                                                         </div>
                                                  ) : diagnosticReport?.mentor_name ? (
                                                         <div className="space-y-4">
-                                                               <h3 className="text-lg font-semibold text-[#0f172b]">Your Mentor</h3>
-                                                               <div className="border border-gray-200 rounded-[14px] p-6 space-y-4">
+                                                               <h3 className="text-lg font-bold text-[#0f172b]">Your Mentor</h3>
+                                                               <div className="border border-gray-200 rounded-[14px] p-5 space-y-4 shadow-sm">
                                                                       {/* Mentor Info */}
                                                                       <div className="flex items-center gap-4">
-                                                                             <div className="size-16 rounded-full bg-gradient-to-b from-[#FF9E44] to-[#ff7e1a] flex items-center justify-center text-white text-2xl font-semibold shrink-0">
+                                                                             <div className="size-14 rounded-full bg-gradient-to-br from-[#FF9E44] to-[#F77F00] flex items-center justify-center text-white text-xl font-bold shrink-0 shadow-md">
                                                                                     {diagnosticReport.mentor_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
                                                                              </div>
                                                                              <div>
-                                                                                    <h4 className="text-lg font-semibold text-[#0f172b]">{diagnosticReport.mentor_name}</h4>
+                                                                                    <h4 className="text-lg font-bold text-[#0f172b]">{diagnosticReport.mentor_name}</h4>
                                                                                     {diagnosticReport.average_rating != null && (
                                                                                            <div className="flex items-center gap-1 mt-1">
-                                                                                                  <div className="bg-[#fef3e6] text-[#FF9E44] text-xs px-3 py-1 rounded-full flex items-center gap-1">
-                                                                                                         <Star className="size-3 fill-[#FF9E44]" />
-                                                                                                         {diagnosticReport.average_rating.toFixed(1)} rating
-                                                                                                  </div>
+                                                                                                  <Star className="size-3.5 fill-[#FF9E44] text-[#FF9E44]" />
+                                                                                                  <span className="text-sm font-semibold text-[#0f172b]">{Number(diagnosticReport.average_rating).toFixed(1)}</span>
+                                                                                                  <span className="text-xs text-gray-500 ml-1">Rating</span>
                                                                                            </div>
                                                                                     )}
                                                                              </div>
@@ -384,11 +496,11 @@ function SessionDetailsDialog({
 
                                                                       {/* Strongest Aspects as expertise */}
                                                                       {diagnosticReport.strongest_aspects && (
-                                                                             <div className="space-y-2">
-                                                                                    <p className="text-base font-medium text-[#0f172b]">Key Strengths</p>
+                                                                             <div className="space-y-2 pt-2 border-t border-gray-100">
+                                                                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Key Strengths Identified</p>
                                                                                     <div className="flex flex-wrap gap-2">
                                                                                            {diagnosticReport.strongest_aspects.split(',').map((tag: string, i: number) => (
-                                                                                                  <span key={i} className="bg-gray-100 text-[#0f172b] text-sm px-3 py-1.5 rounded-[10px]">
+                                                                                                  <span key={i} className="bg-gray-100 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200">
                                                                                                          {tag.trim()}
                                                                                                   </span>
                                                                                            ))}
@@ -398,29 +510,33 @@ function SessionDetailsDialog({
 
                                                                       {/* Improvement areas as about */}
                                                                       {diagnosticReport.improvement_areas && (
-                                                                             <div className="space-y-2">
-                                                                                    <p className="text-base font-medium text-[#0f172b]">Summary</p>
-                                                                                    <p className="text-sm text-gray-500 leading-relaxed">
-                                                                                           {diagnosticReport.improvement_areas}
+                                                                             <div className="space-y-2 pt-2 border-t border-gray-100">
+                                                                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Feedback Summary</p>
+                                                                                    <p className="text-sm text-gray-600 leading-relaxed italic">
+                                                                                           "{diagnosticReport.improvement_areas}"
                                                                                     </p>
                                                                              </div>
                                                                       )}
                                                                </div>
                                                         </div>
-                                                 ) : null}
+                                                 ) : (
+                                                        <div className="bg-gray-50 rounded-xl p-4 text-center border border-dashed border-gray-300">
+                                                               <p className="text-sm text-gray-400">Mentor report not available yet.</p>
+                                                        </div>
+                                                 )}
 
                                                  {/* Session Agenda */}
                                                  <div className="space-y-4">
-                                                        <h3 className="text-lg font-semibold text-[#0f172b]">Session Agenda</h3>
-                                                        <div className="space-y-3">
+                                                        <h3 className="text-lg font-bold text-[#0f172b]">Session Agenda</h3>
+                                                        <div className="space-y-4">
                                                                {DIAGNOSTIC_AGENDA.map((item, i) => (
-                                                                      <div key={i} className="flex gap-3 items-start">
-                                                                             <div className="size-8 rounded-full bg-[#FF9E44] flex items-center justify-center text-white text-sm font-medium shrink-0">
+                                                                      <div key={i} className="flex gap-4 items-start group">
+                                                                             <div className="size-8 rounded-full bg-[#FFF5ED] text-[#FF9E44] border border-[#FF9E44]/20 flex items-center justify-center text-sm font-bold shrink-0 shadow-sm group-hover:bg-[#FF9E44] group-hover:text-white transition-colors">
                                                                                     {i + 1}
                                                                              </div>
                                                                              <div>
-                                                                                    <p className="text-base font-medium text-[#0f172b]">{item.title}</p>
-                                                                                    <p className="text-sm text-gray-500">{item.description}</p>
+                                                                                    <p className="text-base font-bold text-[#0f172b] group-hover:text-[#FF9E44] transition-colors">{item.title}</p>
+                                                                                    <p className="text-sm text-gray-500 mt-1">{item.description}</p>
                                                                              </div>
                                                                       </div>
                                                                ))}
@@ -429,33 +545,24 @@ function SessionDetailsDialog({
 
                                                  {/* How to Prepare */}
                                                  <div className="space-y-4">
-                                                        <h3 className="text-lg font-semibold text-[#0f172b]">How to Prepare</h3>
+                                                        <h3 className="text-lg font-bold text-[#0f172b]">How to Prepare</h3>
                                                         <div className="bg-gray-50 border border-gray-200 rounded-[14px] p-5 space-y-3">
                                                                {DIAGNOSTIC_PREP_TIPS.map((tip, i) => (
                                                                       <div key={i} className="flex items-start gap-3">
                                                                              <CheckCircle2 className="size-5 text-[#FF9E44] shrink-0 mt-0.5" />
-                                                                             <p className="text-sm text-gray-500">{tip}</p>
+                                                                             <p className="text-sm text-gray-600 font-medium">{tip}</p>
                                                                       </div>
                                                                ))}
                                                         </div>
                                                  </div>
                                           </>
                                    )}
-
-                                   {/* Non-diagnostic: simple info */}
-                                   {!isDiagnostic && (
-                                          <div className="text-center py-4">
-                                                 <p className="text-sm text-gray-400">
-                                                        No additional details available for this session yet.
-                                                 </p>
-                                          </div>
-                                   )}
                             </div>
 
                             {/* Footer */}
-                            <DialogFooter className="px-6 py-4 border-t border-gray-200">
+                            <DialogFooter className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
                                    <DialogClose asChild>
-                                          <Button variant="outline" className="w-full rounded-[14px] h-12 text-base font-medium border-gray-200">
+                                          <Button variant="outline" className="w-full rounded-[12px] h-12 text-base font-medium border-gray-200 hover:bg-white hover:border-[#FF9E44] hover:text-[#FF9E44] transition-all">
                                                  Close
                                           </Button>
                                    </DialogClose>
@@ -504,12 +611,12 @@ function formatDate(dateStr: string | null | undefined): string | null {
               const date = new Date(dateStr + 'T00:00:00')
               return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
        }
-       // Otherwise return as-is (e.g. "October Week 6")
+       // Otherwise return as-is
        return dateStr
 }
 
-function computeOverallDates(particulars: Particular[]): { start: string | null, end: string | null } {
-       const isoDates = particulars
+function computeOverallDates(items: JourneyItem[]): { start: string | null, end: string | null } {
+       const isoDates = items
               .flatMap(p => [p.start_date, p.end_date])
               .filter((d): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d))
               .map(d => new Date(d + 'T00:00:00'))

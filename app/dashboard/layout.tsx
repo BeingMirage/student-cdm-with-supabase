@@ -14,10 +14,10 @@ export default function DashboardLayout({
        return (
               <div className="min-h-screen bg-[#F8F9FB]">
                      {/* Header */}
-                     <header className="fixed top-0 left-0 right-0 h-[104px] bg-black z-50 px-12 flex items-center justify-between">
+                     <header className="fixed top-0 left-0 right-0 h-[80px] md:h-[104px] bg-black z-50 px-4 md:px-12 flex items-center justify-between transition-all">
                             {/* Logo - Fixed Width to allow centering */}
-                            <div className="w-[200px] flex items-center shrink-0">
-                                   <Link href="/dashboard" className="relative w-[64px] h-[64px] hover:opacity-80 transition-opacity">
+                            <div className="w-auto md:w-[200px] flex items-center shrink-0">
+                                   <Link href="/dashboard" className="relative w-[48px] h-[48px] md:w-[64px] md:h-[64px] hover:opacity-80 transition-opacity">
                                           <Image
                                                  src="/login-artwork.jpg"
                                                  alt="Logo"
@@ -28,12 +28,14 @@ export default function DashboardLayout({
                             </div>
 
                             {/* Navigation - Centered */}
-                            <nav className="hidden md:flex items-center gap-12 text-[16px] font-medium grow justify-center">
+                            <nav className="flex items-center gap-4 md:gap-12 text-[14px] md:text-[16px] font-medium grow justify-center overflow-x-auto no-scrollbar px-4">
                                    <NavLink href="/dashboard">Home</NavLink>
                                    <NavLink href="/my-journey">My Journey</NavLink>
-                                   <NavLink href="#">Courses</NavLink>
-                                   <NavLink href="#">Projects</NavLink>
-                                   <NavLink href="#">Industry Updates</NavLink>
+                                   <span className="hidden md:inline-flex gap-12">
+                                          <NavLink href="#">Courses</NavLink>
+                                          <NavLink href="#">Projects</NavLink>
+                                          <NavLink href="#">Industry Updates</NavLink>
+                                   </span>
                             </nav>
 
                             {/* Profile - Fixed Width to allow centering */}
@@ -43,7 +45,7 @@ export default function DashboardLayout({
                      </header>
 
                      {/* Content */}
-                     <main className="pt-[104px]">
+                     <main className="pt-[80px] md:pt-[104px]">
                             {children}
                      </main>
               </div>

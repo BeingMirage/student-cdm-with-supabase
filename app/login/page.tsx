@@ -30,26 +30,24 @@ export default function LoginPage() {
               e.preventDefault()
               setIsLoading(true)
               setError(null)
-              setLoginAttempted(true)
 
               const formData = new FormData(e.currentTarget as HTMLFormElement)
               const email = formData.get('email') as string
               const password = formData.get('password') as string
 
               try {
-                     const { error } = await supabase.auth.signInWithPassword({
+                     const { error: authError } = await supabase.auth.signInWithPassword({
                             email,
                             password,
                      })
 
-                     if (error) {
-                            setError(error.message)
+                     if (authError) {
+                            setError(authError.message || "Invalid credentials")
                             setIsLoading(false)
                             return
                      }
 
-                     // Redirect is handled by the useEffect above
-                     // when AuthProvider detects the SIGNED_IN state
+                     setLoginAttempted(true)
               } catch (err) {
                      console.error("Login error:", err)
                      setError("An unexpected error occurred")
@@ -60,7 +58,7 @@ export default function LoginPage() {
        return (
               <div className="min-h-screen w-full flex bg-white">
                      {/* Left Side - Image (Full Height) */}
-                     <div className="relative w-1/2 h-screen hidden lg:block bg-black">
+                     <div className="relative w-1/2 h-screen hidden md:block bg-black">
                             <Image
                                    src="/login-artwork.jpg"
                                    alt="The Career Company - Personal touch for your professional journey"

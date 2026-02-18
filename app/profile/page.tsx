@@ -56,9 +56,9 @@ export default function ProfilePage() {
                      }
 
                      try {
-                            // Get institute ID
+                            // Get institute ID from cdm_institutes
                             const { data: institute } = await supabase
-                                   .from('institutes')
+                                   .from('cdm_institutes')
                                    .select('id')
                                    .eq('name', profile.institute_name)
                                    .maybeSingle()
@@ -68,11 +68,24 @@ export default function ProfilePage() {
                                    return
                             }
 
-                            // Get all particulars for this institute (with dates)
-                            const { data: particulars } = await supabase
-                                   .from('institute_particulars')
-                                   .select('id, particulars, start_date, end_date')
+                            // Get learning journeys for this institute
+                            const { data: journeys } = await supabase
+                                   .from('cdm_learning_journeys')
+                                   .select('id')
                                    .eq('institute_id', institute.id)
+
+                            if (!journeys || journeys.length === 0) {
+                                   setIsLoadingParticulars(false)
+                                   return
+                            }
+
+                            const journeyIds = journeys.map(j => j.id)
+
+                            // Get all journey items (particulars) for these journeys
+                            const { data: particulars } = await supabase
+                                   .from('cdm_learning_journey_items')
+                                   .select('id, particulars, start_date, end_date')
+                                   .in('learning_journey_id', journeyIds)
 
                             if (particulars) {
                                    setParticularsData(particulars)
@@ -86,7 +99,7 @@ export default function ProfilePage() {
                                    setReportFlags(flags)
                             }
                      } catch (err) {
-                            console.error('Error fetching institute particulars:', err)
+                            console.error('Error fetching journey items:', err)
                      } finally {
                             setIsLoadingParticulars(false)
                      }
@@ -95,25 +108,51 @@ export default function ProfilePage() {
               fetchParticulars()
        }, [profile, authLoading])
 
-       // Fetch diagnostic report
+       // Fetch diagnostic report from cdm_student_reports via cdm_session_attendees
        useEffect(() => {
               const fetchDiagnosticReport = async () => {
                      if (authLoading) return
-                     if (!user) return
+                     if (!profile) return
                      setIsLoadingReport(true)
                      try {
+                            // Find session attendees for this student
+                            const { data: attendees } = await supabase
+                                   .from('cdm_session_attendees')
+                                   .select('id')
+                                   .eq('student_id', profile.id)
+
+                            if (!attendees || attendees.length === 0) {
+                                   setIsLoadingReport(false)
+                                   return
+                            }
+
+                            const attendeeIds = attendees.map(a => a.id)
+
+                            // Get the latest diagnostic report linked to these attendees
                             const { data, error } = await supabase
-                                   .from('diagnostic_reports')
+                                   .from('cdm_student_reports')
                                    .select('*')
-                                   .eq('student_id', user.id)
+                                   .in('attendee_id', attendeeIds)
                                    .order('created_at', { ascending: false })
                                    .limit(1)
                                    .maybeSingle()
 
                             if (error) {
                                    console.error('Error fetching diagnostic report:', error)
-                            } else {
-                                   setDiagnosticReport(data)
+                            } else if (data) {
+                                   // Flatten report_data fields for backward-compatible access
+                                   const rd = data.report_data || {}
+                                   setDiagnosticReport({
+                                          ...data,
+                                          mentor_name: rd.meta?.mentor_name,
+                                          average_rating: rd.meta?.overall_rating,
+                                          improvement_areas: rd.feedback_summary?.areas_for_improvement,
+                                          targeted_roles: rd.feedback_summary?.target_roles,
+                                          strongest_aspects: rd.feedback_summary?.strongest_aspects,
+                                          fit_job_families: rd.feedback_summary?.job_fit,
+                                          backup_roles: rd.feedback_summary?.plan_b_c,
+                                          sections: rd.sections || [],
+                                   })
                             }
                      } catch (err) {
                             console.error('Unexpected error fetching diagnostic report:', err)
@@ -123,7 +162,7 @@ export default function ProfilePage() {
               }
 
               fetchDiagnosticReport()
-       }, [user, authLoading])
+       }, [profile, authLoading])
 
        // Helper: find particular matching a report type
        const findParticular = (type: ReportType): Particular | undefined => {
@@ -188,7 +227,7 @@ export default function ProfilePage() {
                                           <p className="text-xs md:text-sm text-[#FF9E44] font-medium">2025 • Student</p>
                                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
                                                  <span className="flex items-center gap-1"><Mail className="size-3" /> <span className="truncate max-w-[140px] sm:max-w-none">{profile?.email || "email@institute.ac.in"}</span></span>
-                                                 <span className="flex items-center gap-1 hidden sm:flex"><Phone className="size-3" /> {profile?.phone_number || "+91 --- --- ----"}</span>
+                                                 <span className="flex items-center gap-1 hidden sm:flex"><Phone className="size-3" /> {profile?.phone || "+91 --- --- ----"}</span>
                                                  <span className="flex items-center gap-1 hidden sm:flex"><MapPin className="size-3" /> India</span>
                                           </div>
                                    </div>
@@ -213,14 +252,14 @@ export default function ProfilePage() {
 
                      {/* Content */}
                      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-6 md:py-8">
-                            {/* Mobile Journey Dropdown — visible only below lg */}
-                            <div className="lg:hidden mb-6">
+                            {/* Mobile Journey Dropdown — visible only below md */}
+                            <div className="md:hidden mb-6">
                                    <MobileJourneyDropdown journeyItems={journeyItems} isLoading={isLoadingParticulars} />
                             </div>
 
-                            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-                                   {/* Left Sidebar — hidden on mobile, shown on lg+ */}
-                                   <div className="hidden lg:block w-[240px] shrink-0 space-y-6">
+                            <div className="flex flex-col md:flex-row gap-6 lg:gap-8">
+                                   {/* Left Sidebar — hidden on mobile, shown on md+ */}
+                                   <div className="hidden md:block md:basis-60 md:w-60 shrink-0 space-y-6">
                                           <Sidebar journeyItems={journeyItems} isLoading={isLoadingParticulars} />
                                    </div>
 
@@ -510,32 +549,15 @@ function DiagnosticInterviewTab({ report, isLoading, particular }: { report: any
        if (isLoading) return <div className="p-8 text-center text-gray-500">Loading diagnostic report...</div>
        if (!report) return <div className="p-8 text-center text-gray-500">No diagnostic report available.</div>
 
-       const scores = report.detailed_scores || {}
+       // Build chart data from report_data.sections[]
+       const sections: { title: string; rating: number; items: any[] }[] = report.sections || []
 
-       // Build chart data only from available scores (no fallback values)
-       const chartEntries = [
-              { label: "Communication", key: 'Clarity of Thoughts : How clearly does the candidate express their thoughts during the interview?' },
-              { label: "Soft Skills", key: 'Soft Skills : Does the candidate display the required soft skills (communication, teamwork, problem-solving, etc.)?' },
-              { label: "Domain Knowledge", key: 'Domain Knowledge : How well does the candidate demonstrate knowledge in their domain or field of interest?' },
-              { label: "Confidence", key: 'Confidence & Emotional Readiness' },
-              { label: "Career Clarity", key: 'Has the candidate shown clarity about their past roles and learnings?  Are they able to clearly state what they want to do next?' },
-       ]
-
-       // Find score values with fuzzy key matching (keys may have trailing spaces)
-       const findScore = (searchKey: string): number | null => {
-              const sk = searchKey.toLowerCase().trim()
-              for (const [k, v] of Object.entries(scores)) {
-                     if (k.toLowerCase().trim().startsWith(sk.substring(0, 30))) {
-                            const parsed = parseInt(v as string)
-                            if (!isNaN(parsed)) return parsed * 20
-                     }
-              }
-              return null
-       }
-
-       const chartData = chartEntries
-              .map(e => ({ label: e.label, value: findScore(e.key) }))
-              .filter(e => e.value !== null) as { label: string; value: number }[]
+       const chartData = sections
+              .filter((s: any) => s.rating > 0)
+              .map((s: any) => ({
+                     label: s.title,
+                     value: Math.round((s.rating / 5) * 100),
+              }))
 
        // Determine date to show
        const completedDate = particular?.end_date

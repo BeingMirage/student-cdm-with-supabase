@@ -18,31 +18,31 @@ export default function DashboardPage() {
               <div className="max-w-[1440px] mx-auto p-8 space-y-12 pb-24">
 
                      {/* Welcome Section */}
-                     <section className="bg-white rounded-[24px] p-10 flex flex-col md:flex-row items-center justify-between shadow-sm border border-gray-100">
-                            <div className="flex items-center gap-8">
+                     <section className="bg-white rounded-[24px] p-6 lg:p-8 xl:p-10 flex flex-col xl:flex-row items-center justify-between shadow-sm border border-gray-100">
+                            <div className="flex items-center gap-6 xl:gap-8 w-full xl:w-auto">
                                    <div className="w-16 h-16 rounded-full bg-[#FF9E44] flex items-center justify-center text-white text-2xl font-bold shrink-0">
                                           {isLoading ? "..." : userInitials}
                                    </div>
-                                   <div className="space-y-2">
-                                          <h1 className="text-3xl font-bold text-[#1e232c] flex items-center gap-2">
+                                   <div className="space-y-2 min-w-0">
+                                          <h1 className="text-2xl lg:text-3xl font-bold text-[#1e232c] flex items-center gap-2 truncate">
                                                  Welcome Back, {isLoading ? "..." : firstName}! <span className="text-2xl">👋</span>
                                           </h1>
                                           <div className="flex flex-col gap-1.5">
                                                  {profile?.institute_name && (
-                                                        <p className="text-gray-600 font-medium flex items-center gap-2">
-                                                               <Building2 className="size-4 text-[#FF9E44]" />
-                                                               {profile.institute_name}
+                                                        <p className="text-gray-600 font-medium flex items-center gap-2 truncate">
+                                                               <Building2 className="size-4 text-[#FF9E44] shrink-0" />
+                                                               <span className="truncate">{profile.institute_name}</span>
                                                         </p>
                                                  )}
                                                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                                                        <span className="flex items-center gap-1.5">
-                                                               <Mail className="size-4 text-[#FF9E44]" />
+                                                        <span className="flex items-center gap-1.5 whitespace-nowrap">
+                                                               <Mail className="size-4 text-[#FF9E44] shrink-0" />
                                                                {profile?.email || "email@example.com"}
                                                         </span>
-                                                        {profile?.phone_number && (
-                                                               <span className="flex items-center gap-1.5">
-                                                                      <Phone className="size-4 text-[#FF9E44]" />
-                                                                      {profile.phone_number}
+                                                        {profile?.phone && (
+                                                               <span className="flex items-center gap-1.5 whitespace-nowrap">
+                                                                      <Phone className="size-4 text-[#FF9E44] shrink-0" />
+                                                                      {profile.phone}
                                                                </span>
                                                         )}
                                                  </div>
@@ -50,20 +50,22 @@ export default function DashboardPage() {
                                    </div>
                             </div>
 
-                            <div className="flex items-center gap-12 mt-8 md:mt-0">
-                                   <div className="text-center">
-                                          <p className="text-3xl font-bold text-[#1e232c]">85%</p>
-                                          <p className="text-gray-500 text-sm">Profile</p>
+                            <div className="flex flex-col xl:flex-row items-center gap-6 xl:gap-8 mt-8 xl:mt-0 w-full xl:w-auto">
+                                   <div className="flex items-center justify-center gap-4 lg:gap-8 w-full xl:w-auto">
+                                          <div className="text-center">
+                                                 <p className="text-3xl font-bold text-[#1e232c]">85%</p>
+                                                 <p className="text-gray-500 text-sm">Profile</p>
+                                          </div>
+                                          <div className="text-center">
+                                                 <p className="text-3xl font-bold text-[#1e232c]">12</p>
+                                                 <p className="text-gray-500 text-sm">Applications</p>
+                                          </div>
+                                          <div className="text-center">
+                                                 <p className="text-3xl font-bold text-[#1e232c]">3</p>
+                                                 <p className="text-gray-500 text-sm">Interviews</p>
+                                          </div>
                                    </div>
-                                   <div className="text-center">
-                                          <p className="text-3xl font-bold text-[#1e232c]">12</p>
-                                          <p className="text-gray-500 text-sm">Applications</p>
-                                   </div>
-                                   <div className="text-center">
-                                          <p className="text-3xl font-bold text-[#1e232c]">3</p>
-                                          <p className="text-gray-500 text-sm">Interviews</p>
-                                   </div>
-                                   <Button className="bg-[#161616] text-white px-8 py-6 rounded-xl hover:bg-black">
+                                   <Button className="bg-[#161616] text-white px-5 h-10 rounded-xl hover:bg-black w-full md:w-auto shrink-0 whitespace-nowrap text-sm">
                                           Complete Profile
                                    </Button>
                             </div>
