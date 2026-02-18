@@ -1,30 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Eye, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
-import { useAuth } from "@/components/auth-provider"
 
 export default function LoginPage() {
-       const router = useRouter()
-       const { user } = useAuth()
        const [isLoading, setIsLoading] = useState(false)
        const [error, setError] = useState<string | null>(null)
-       const [loginAttempted, setLoginAttempted] = useState(false)
        const supabase = createClient()
-
-       // Redirect only after a login attempt succeeds on this page
-       useEffect(() => {
-              if (loginAttempted && user) {
-                     window.location.href = "/dashboard"
-              }
-       }, [loginAttempted, user])
 
        const handleLogin = async (e: React.FormEvent) => {
               e.preventDefault()
@@ -36,7 +24,7 @@ export default function LoginPage() {
               const password = formData.get('password') as string
 
               try {
-                     const { error: authError } = await supabase.auth.signInWithPassword({
+                     const { data, error: authError } = await supabase.auth.signInWithPassword({
                             email,
                             password,
                      })
@@ -47,7 +35,17 @@ export default function LoginPage() {
                             return
                      }
 
-                     setLoginAttempted(true)
+                     if (!data.session) {
+                            setError("Login failed — no session returned")
+                            setIsLoading(false)
+                            return
+                     }
+
+                     // Wait for cookies to be fully written before navigating
+                     await new Promise(resolve => setTimeout(resolve, 100))
+
+                     // Full page navigation to ensure auth cookies are sent with the request
+                     window.location.href = '/dashboard'
               } catch (err) {
                      console.error("Login error:", err)
                      setError("An unexpected error occurred")

@@ -344,9 +344,11 @@ CREATE TABLE public.cdm_session_attendees (
   student_name text,
   batch_name text,
   session_name text,
+  journey_item_id uuid,
   CONSTRAINT cdm_session_attendees_pkey PRIMARY KEY (id),
   CONSTRAINT cdm_attendees_session_fkey FOREIGN KEY (session_id) REFERENCES public.cdm_journey_sessions(id),
-  CONSTRAINT cdm_attendees_student_fkey FOREIGN KEY (student_id) REFERENCES public.cdm_students(id)
+  CONSTRAINT cdm_attendees_student_fkey FOREIGN KEY (student_id) REFERENCES public.cdm_students(id),
+  CONSTRAINT cdm_attendees_lji_fkey FOREIGN KEY (journey_item_id) REFERENCES public.cdm_learning_journey_items(id)
 );
 CREATE TABLE public.cdm_student_reports (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -357,9 +359,11 @@ CREATE TABLE public.cdm_student_reports (
   student_name text,
   batch_name text,
   attendee_id uuid NOT NULL,
+  journey_item_id uuid,
   CONSTRAINT cdm_student_reports_pkey PRIMARY KEY (id),
   CONSTRAINT cdm_student_reports_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.cdm_journey_sessions(id),
-  CONSTRAINT cdm_reports_attendee_fkey FOREIGN KEY (attendee_id) REFERENCES public.cdm_session_attendees(id)
+  CONSTRAINT cdm_reports_attendee_fkey FOREIGN KEY (attendee_id) REFERENCES public.cdm_session_attendees(id),
+  CONSTRAINT cdm_reports_lji_fkey FOREIGN KEY (journey_item_id) REFERENCES public.cdm_learning_journey_items(id)
 );
 CREATE TABLE public.cdm_students (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -1299,7 +1303,7 @@ CREATE TABLE public.transaction (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   transaction_id text,
   payment_status boolean DEFAULT false,
-  amount text,
+  amount text NOT NULL DEFAULT '0'::text,
   mentor_id uuid,
   updated_at timestamp with time zone,
   booking_id uuid UNIQUE,

@@ -1,14 +1,13 @@
 "use client"
 
 import { Card } from "@/components/ui/card"
-import { Star, CheckCircle2 } from "lucide-react"
+import { Star } from "lucide-react"
 import {
        ReportHeader,
        BackToProfile,
        CandidateDetails,
        MentorDetailsSection,
        StarRating,
-       InterviewTranscript,
 } from "../report-components"
 import { useAuth } from "@/components/auth-provider"
 import { useEffect, useState } from "react"
@@ -41,7 +40,6 @@ export default function PracticeReportPage() {
 
                             const attendeeIds = attendees.map(a => a.id)
 
-                            // Fetch all reports for these attendees
                             const { data: reports, error } = await supabase
                                    .from("cdm_student_reports")
                                    .select("*")
@@ -49,9 +47,8 @@ export default function PracticeReportPage() {
                                    .order("created_at", { ascending: false })
 
                             if (reports && reports.length > 0) {
-                                   // Find the first report that is of type 'Practice' (case-insensitive)
                                    const practiceReport = reports.find(r =>
-                                          r.report_type.toLowerCase().includes('practice')
+                                          (r.report_type || '').toLowerCase().includes('practice')
                                    )
 
                                    if (practiceReport) {
@@ -89,30 +86,33 @@ export default function PracticeReportPage() {
        }
 
        const meta = reportData.meta || {}
-       const overallScore = meta.overall_score || "N/A"
-       const skillBreakdown = reportData.skill_breakdown || []
-       const detailedAssessments = reportData.detailed_assessments || []
-       const softSkillsAssessment = reportData.soft_skills || []
+       const sections: { title: string; rating: number }[] = reportData.sections || []
+       const feedback = reportData.feedback_summary || {}
+       const overallRating = meta.overall_rating || 0
 
-       // Helper to parse "3.7/5.0" to ratio
-       const getScoreRatio = (scoreStr: string) => {
-              if (!scoreStr) return 0
-              try {
-                     const parts = scoreStr.split('/')
-                     if (parts.length === 2) {
-                            return parseFloat(parts[0]) / parseFloat(parts[1])
-                     }
-                     return parseFloat(scoreStr) / 5
-              } catch (e) {
-                     return 0
-              }
-       }
+       // Build feedback entries from feedback_summary
+       const feedbackEntries = [
+              { heading: "Overall Impression", content: feedback.overall_impression },
+              { heading: "Strengths", content: feedback.strengths },
+              { heading: "Additional Strengths", content: feedback.additional_strengths },
+              { heading: "Areas for Improvement", content: feedback.areas_for_improvement },
+              { heading: "Career Goals Articulation", content: feedback.career_goals_articulation },
+              { heading: "Red Flags", content: feedback.red_flags },
+              { heading: "Red Flag Remarks", content: feedback.red_flag_remarks },
+       ].filter(e => e.content)
 
-       const overallRatio = getScoreRatio(overallScore)
+       // Calculate average section rating
+       const avgSectionRating = sections.length > 0
+              ? (sections.reduce((sum, s) => sum + s.rating, 0) / sections.length).toFixed(1)
+              : "N/A"
 
        return (
               <div className="min-h-screen bg-[#F8F9FB]">
-                     <ReportHeader title="Practice Interview Report" date={meta.date} />
+                     <ReportHeader
+                            title="Practice Interview Report"
+                            subtitle="Detailed HR interview practice evaluation and feedback"
+                            date={meta.date}
+                     />
 
                      <div className="max-w-[1400px] mx-auto px-8 py-6 space-y-6">
                             <BackToProfile />
@@ -127,160 +127,145 @@ export default function PracticeReportPage() {
                                    mentorName={meta.mentor_name}
                                    mentorRole="Practice Interviewer"
                                    assessmentDate={meta.date}
+                                   assessmentSummary={feedback.overall_impression}
+                                   progressNote={`Overall Rating: ${typeof overallRating === 'number' ? overallRating.toFixed(1) : overallRating} / 5`}
                             />
 
-                            {/* Overall Assessment */}
+                            {/* ─── Overall Assessment ──────────────────────────── */}
                             <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
                                    <h3 className="text-lg font-bold text-[#1e232c] mb-6">Overall Assessment</h3>
-                                   <div className="grid grid-cols-2 gap-8">
-                                          {/* Score Circle */}
-                                          <div className="flex flex-col items-center justify-center">
-                                                 <div className="relative size-40">
-                                                        <svg className="size-full -rotate-90" viewBox="0 0 120 120">
-                                                               <circle cx="60" cy="60" r="50" fill="none" stroke="#f3f4f6" strokeWidth="10" />
-                                                               <circle cx="60" cy="60" r="50" fill="none" stroke="#FF9E44" strokeWidth="10"
-                                                                      strokeDasharray={`${overallRatio * 314} 314`} strokeLinecap="round" />
-                                                        </svg>
-                                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                               <span className="text-3xl font-bold text-[#FF9E44]">{overallScore}</span>
-                                                        </div>
-                                                 </div>
-                                                 {/* Radar-like labels */}
-                                                 <div className="flex flex-wrap justify-center gap-2 mt-4 text-[10px] text-gray-500">
-                                                        <span>COMMUNICATION</span>
-                                                        <span>•</span>
-                                                        <span>ATTITUDE</span>
-                                                        <span>•</span>
-                                                        <span>TECHNICAL SKILLS</span>
-                                                        <span>•</span>
-                                                        <span>SOFT SKILLS</span>
-                                                        <span>•</span>
-                                                        <span>ENTHUSIASM</span>
+                                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                          {/* Overall Rating */}
+                                          <div className="flex flex-col items-center justify-center bg-orange-50/60 rounded-2xl p-6">
+                                                 <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">Overall Rating</p>
+                                                 <p className="text-5xl font-bold text-[#FF9E44]">{typeof overallRating === 'number' ? overallRating.toFixed(1) : overallRating}</p>
+                                                 <p className="text-xs text-gray-400 mt-1">out of 5.0</p>
+                                                 <div className="mt-3">
+                                                        <StarRating rating={Math.round(overallRating)} />
                                                  </div>
                                           </div>
 
-                                          {/* Skill Breakdown */}
-                                          <div>
-                                                 <h4 className="font-bold text-[#1e232c] mb-4">Skill Breakdown</h4>
-                                                 <div className="grid grid-cols-2 gap-3">
-                                                        {skillBreakdown.length > 0 ? (
-                                                               skillBreakdown.map((skill: any, i: number) => (
-                                                                      <div key={i} className="flex items-center justify-between">
-                                                                             <span className="text-sm text-gray-700">{skill.name}</span>
-                                                                             <div className="flex items-center gap-0.5">
-                                                                                    {Array.from({ length: 5 }, (_, si) => (
-                                                                                           <Star key={si} className={`size-3.5 ${si < (skill.rating || 0) ? "text-[#FF9E44] fill-[#FF9E44]" : "text-gray-200 fill-gray-200"}`} />
-                                                                                    ))}
-                                                                             </div>
-                                                                      </div>
-                                                               ))
-                                                        ) : (
-                                                               <p className="text-sm text-gray-500 italic">No breakdown available</p>
-                                                        )}
-                                                 </div>
+                                          {/* Average Section Score */}
+                                          <div className="flex flex-col items-center justify-center bg-blue-50/60 rounded-2xl p-6">
+                                                 <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">Avg. Section Score</p>
+                                                 <p className="text-5xl font-bold text-blue-500">{avgSectionRating}</p>
+                                                 <p className="text-xs text-gray-400 mt-1">out of 5.0</p>
+                                          </div>
+
+                                          {/* Sections Evaluated */}
+                                          <div className="flex flex-col items-center justify-center bg-green-50/60 rounded-2xl p-6">
+                                                 <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">Sections Evaluated</p>
+                                                 <p className="text-5xl font-bold text-green-500">{sections.length}</p>
+                                                 <p className="text-xs text-gray-400 mt-1">skill areas</p>
                                           </div>
                                    </div>
                             </Card>
 
-                            {/* Key Remarks */}
-                            {reportData.key_remarks && (
-                                   <Card className="p-5 rounded-2xl border-orange-200 bg-orange-50 shadow-sm">
-                                          <div className="flex items-start gap-3">
-                                                 <span className="text-lg">⭐</span>
-                                                 <div>
-                                                        <p className="font-semibold text-[#1e232c] mb-1">Key Remarks</p>
-                                                        <p className="text-sm text-gray-700 leading-relaxed">
-                                                               {reportData.key_remarks}
-                                                        </p>
-                                                 </div>
-                                          </div>
-                                   </Card>
-                            )}
-
-                            {/* Detailed Skill Assessment */}
-                            {detailedAssessments.length > 0 && (
+                            {/* ─── Section-wise Skill Ratings ──────────────────── */}
+                            {sections.length > 0 && (
                                    <div className="space-y-6">
-                                          <h2 className="text-xl font-bold text-[#1e232c]">Detailed Skill Assessment</h2>
+                                          <h2 className="text-xl font-bold text-[#1e232c] flex items-center gap-2">
+                                                 📊 Skill-wise Rating
+                                          </h2>
 
-                                          {detailedAssessments.map((skill: any, i: number) => (
-                                                 <div key={i} className="border border-gray-100 rounded-2xl overflow-hidden">
-                                                        {/* Header */}
-                                                        <div className="bg-[#1e232c] px-5 py-4 flex items-center justify-between">
-                                                               <h4 className="text-white font-bold">{skill.name}</h4>
-                                                               <StarRating rating={skill.rating} />
-                                                        </div>
-
-                                                        {/* Content */}
-                                                        <div className="p-6">
-                                                               <div className="grid grid-cols-2 gap-8">
-                                                                      {/* Progress Bars */}
-                                                                      <div className="space-y-4">
-                                                                             <div>
-                                                                                    <div className="flex items-center justify-between mb-1">
-                                                                                           <span className="text-sm text-gray-500">Knowledge</span>
-                                                                                           <span className="text-sm font-bold text-[#1e232c]">{skill.knowledge}%</span>
-                                                                                    </div>
-                                                                                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                                                                                           <div className="h-full bg-[#FF9E44] rounded-full" style={{ width: `${skill.knowledge}%` }} />
-                                                                                    </div>
-                                                                             </div>
-                                                                             <div>
-                                                                                    <div className="flex items-center justify-between mb-1">
-                                                                                           <span className="text-sm text-gray-500">Clarity of Thought</span>
-                                                                                           <span className="text-sm font-bold text-[#1e232c]">{skill.clarity}%</span>
-                                                                                    </div>
-                                                                                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                                                                                           <div className="h-full bg-[#FF9E44] rounded-full" style={{ width: `${skill.clarity}%` }} />
-                                                                                    </div>
+                                          {/* Visual Bar Chart */}
+                                          <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
+                                                 <h3 className="font-bold text-[#1e232c] mb-6">Performance Overview</h3>
+                                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                                                        {sections.map((s, i) => (
+                                                               <div key={i} className="flex flex-col items-center">
+                                                                      <div className="w-full h-32 bg-orange-50 rounded-xl relative overflow-hidden flex items-end">
+                                                                             <div
+                                                                                    className="w-full bg-[#FF9E44] rounded-xl flex items-end justify-center pb-2 text-white font-bold text-sm transition-all"
+                                                                                    style={{ height: `${(s.rating / 5) * 100}%` }}
+                                                                             >
+                                                                                    {s.rating}
                                                                              </div>
                                                                       </div>
+                                                                      <p className="text-[10px] text-gray-500 mt-2 text-center leading-tight line-clamp-2">{s.title}</p>
+                                                               </div>
+                                                        ))}
+                                                 </div>
+                                          </Card>
 
-                                                                      {/* Feedback Points */}
-                                                                      <div>
-                                                                             <h5 className="text-sm font-bold text-[#1e232c] mb-3">Feedback Points</h5>
-                                                                             <ul className="space-y-2">
-                                                                                    {skill.feedback?.map((f: string, fi: number) => (
-                                                                                           <li key={fi} className="flex items-start gap-2 text-sm text-gray-600">
-                                                                                                  <CheckCircle2 className={`size-4 mt-0.5 shrink-0 ${fi === 0 ? "text-green-500" : fi === 1 ? "text-orange-400" : "text-blue-400"}`} />
-                                                                                                  {f}
-                                                                                           </li>
-                                                                                    ))}
-                                                                             </ul>
+                                          {/* Individual Skill Rating Cards */}
+                                          <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden">
+                                                 <div className="bg-[#1e232c] px-5 py-4">
+                                                        <h4 className="text-white font-bold">Detailed Skill Ratings</h4>
+                                                 </div>
+                                                 <div className="p-6 space-y-4">
+                                                        {sections.map((section, si) => (
+                                                               <div key={si} className="flex items-center gap-4">
+                                                                      <span className="text-sm text-gray-700 w-56 shrink-0 font-medium">{section.title}</span>
+                                                                      <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                                                                             <div
+                                                                                    className="h-full rounded-full transition-all"
+                                                                                    style={{
+                                                                                           width: `${(section.rating / 5) * 100}%`,
+                                                                                           backgroundColor: section.rating >= 4 ? '#22c55e' : section.rating >= 3 ? '#FF9E44' : '#ef4444',
+                                                                                    }}
+                                                                             />
+                                                                      </div>
+                                                                      <div className="flex items-center gap-1 shrink-0">
+                                                                             {Array.from({ length: 5 }, (_, i) => (
+                                                                                    <Star
+                                                                                           key={i}
+                                                                                           className={`size-3.5 ${i < section.rating ? "text-[#FF9E44] fill-[#FF9E44]" : "text-gray-200 fill-gray-200"}`}
+                                                                                    />
+                                                                             ))}
+                                                                             <span className="text-sm font-bold text-[#1e232c] ml-1 w-8">{section.rating}/5</span>
                                                                       </div>
                                                                </div>
-                                                        </div>
+                                                        ))}
                                                  </div>
-                                          ))}
+                                          </Card>
                                    </div>
                             )}
 
-                            {/* Soft Skills Assessment */}
-                            {softSkillsAssessment.length > 0 && (
-                                   <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
-                                          <h3 className="text-lg font-bold text-[#1e232c] mb-4">Soft Skills Assessment</h3>
-                                          <div className="space-y-3">
-                                                 {softSkillsAssessment.map((skill: any, i: number) => (
-                                                        <div key={i} className="flex items-center gap-4">
-                                                               <span className="text-sm text-gray-700 w-44 shrink-0">{skill.name}</span>
-                                                               <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
-                                                                      <div
-                                                                             className="h-full bg-[#FF9E44] rounded-full transition-all"
-                                                                             style={{ width: `${getScoreRatio(skill.score) * 100}%` }}
-                                                                      />
-                                                               </div>
-                                                               <span className="text-sm font-bold text-[#1e232c] w-12 text-right">{skill.score}</span>
-                                                        </div>
-                                                 ))}
-                                          </div>
-                                   </Card>
-                            )}
+                            {/* ─── Mentor Feedback Summary ─────────────────────── */}
+                            {feedbackEntries.length > 0 && (
+                                   <div className="space-y-6">
+                                          <h2 className="text-xl font-bold text-[#1e232c] flex items-center gap-2">
+                                                 📋 Mentor Feedback Summary
+                                          </h2>
 
-                            {/* Interview Transcript */}
-                            <InterviewTranscript
-                                   messages={reportData.transcript?.messages}
-                                   duration={reportData.transcript?.duration}
-                                   length={reportData.transcript?.length}
-                            />
+                                          {feedbackEntries.map((entry, i) => {
+                                                 const isStrength = entry.heading.toLowerCase().includes('strength')
+                                                 const isImprovement = entry.heading.toLowerCase().includes('improvement')
+                                                 const isRedFlag = entry.heading.toLowerCase().includes('red flag')
+                                                 const isImpression = entry.heading.toLowerCase().includes('impression')
+                                                 const isGoals = entry.heading.toLowerCase().includes('goal')
+
+                                                 let borderColor = 'border-[#FF9E44]'
+                                                 let bgColor = 'bg-orange-50/40'
+
+                                                 if (isStrength) { borderColor = 'border-green-300'; bgColor = 'bg-green-50/50' }
+                                                 else if (isImprovement) { borderColor = 'border-red-300'; bgColor = 'bg-red-50/50' }
+                                                 else if (isRedFlag) { borderColor = 'border-red-400'; bgColor = 'bg-red-50/60' }
+                                                 else if (isImpression) { borderColor = 'border-blue-300'; bgColor = 'bg-blue-50/50' }
+                                                 else if (isGoals) { borderColor = 'border-purple-300'; bgColor = 'bg-purple-50/50' }
+
+                                                 return (
+                                                        <div key={i} className="border border-gray-100 rounded-2xl overflow-hidden">
+                                                               <div className="bg-[#1e232c] px-5 py-4">
+                                                                      <h4 className="text-white font-bold">{entry.heading}</h4>
+                                                               </div>
+                                                               <div className="p-6">
+                                                                      <div className={`border-l-4 ${borderColor} ${bgColor} rounded-r-xl p-4`}>
+                                                                             <div className="space-y-2">
+                                                                                    {entry.content.split('\n').filter(Boolean).map((line: string, li: number) => (
+                                                                                           <p key={li} className="text-sm text-gray-700 leading-relaxed">
+                                                                                                  {line.trim()}
+                                                                                           </p>
+                                                                                    ))}
+                                                                             </div>
+                                                                      </div>
+                                                               </div>
+                                                        </div>
+                                                 )
+                                          })}
+                                   </div>
+                            )}
                      </div>
               </div>
        )

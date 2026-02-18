@@ -74,6 +74,7 @@ export default function DiagnosticReportPage() {
                             .from("cdm_student_reports")
                             .select("*")
                             .in("attendee_id", attendeeIds)
+                            .ilike("report_type", "%diagnostic%")
                             .order("created_at", { ascending: false })
                             .limit(1)
                             .maybeSingle()
@@ -163,6 +164,7 @@ export default function DiagnosticReportPage() {
                                    mentorName={meta.mentor_name}
                                    mentorRole="Diagnostic Interviewer"
                                    experience={undefined}
+                                   assessmentDate={meta.date}
                                    assessmentSummary={feedback.areas_for_improvement}
                                    progressNote={`Average Rating: ${avgRating.toFixed(1)} / 5  •  Alignment Score: ${alignmentScore} / 5`}
                             />
@@ -222,9 +224,10 @@ export default function DiagnosticReportPage() {
                                                  key={si}
                                                  title={section.title}
                                                  rating={section.rating}
-                                                 items={section.items.map(item => ({
+                                                 items={(section.items ?? []).map(item => ({
                                                         text: item.label,
                                                         value: item.value,
+                                                        is_positive: item.is_positive,
                                                  }))}
                                           />
                                    ))}

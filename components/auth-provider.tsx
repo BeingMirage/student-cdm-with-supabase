@@ -35,58 +35,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
        const supabase = createClient()
 
        useEffect(() => {
-              const fetchSession = async () => {
-                     try {
-                            console.log("AuthProvider: Fetching session...")
-                            const { data: { session } } = await supabase.auth.getSession()
+              let isCancelled = false
 
-                            if (session) {
-                                   console.log("AuthProvider: Session found, fetching profile...", session.user.email)
+              // Initial session check on mount / page reload
+              const initializeAuth = async () => {
+                     try {
+                            const { data: { session } } = await supabase.auth.getSession()
+                            if (isCancelled) return
+
+                            if (session?.user) {
                                    setSession(session)
                                    setUser(session.user)
                                    await fetchProfile(session.user.email!)
-                            } else {
-                                   console.log("AuthProvider: No session found.")
-                                   setProfile(null)
                             }
                      } catch (error) {
                             console.error('Error fetching session:', error)
                      } finally {
-                            console.log("AuthProvider: Finished loading")
-                            setIsLoading(false)
+                            if (!isCancelled) setIsLoading(false)
                      }
               }
 
-              fetchSession()
+              initializeAuth()
 
+              // Listen for explicit auth changes (not INITIAL_SESSION to avoid double-fetch)
               const { data: { subscription } } = supabase.auth.onAuthStateChange(
                      async (event: string, session: Session | null) => {
-                            console.log("AuthProvider: Auth state changed:", event)
+                            if (isCancelled) return
 
-                            if (event === 'SIGNED_OUT') {
+                            if (event === 'SIGNED_IN') {
+                                   setSession(session)
+                                   setUser(session?.user ?? null)
+                                   if (session?.user) {
+                                          await fetchProfile(session.user.email!)
+                                   }
+                                   setIsLoading(false)
+                            } else if (event === 'SIGNED_OUT') {
                                    setSession(null)
                                    setUser(null)
                                    setProfile(null)
-                                   return
+                                   setIsLoading(false)
+                            } else if (event === 'TOKEN_REFRESHED') {
+                                   // Just update session/user, don't re-fetch profile
+                                   setSession(session)
+                                   setUser(session?.user ?? null)
                             }
-
-                            setSession(session)
-                            setUser(session?.user ?? null)
-
-                            if (session?.user) {
-                                   await fetchProfile(session.user.email!)
-                            } else {
-                                   setProfile(null)
-                            }
-
-                            setIsLoading(false)
                      }
               )
 
               return () => {
+                     isCancelled = true
                      subscription.unsubscribe()
               }
-       }, [supabase])
+       // eslint-disable-next-line react-hooks/exhaustive-deps
+       }, [])
 
        const fetchProfile = async (userEmail: string) => {
               try {

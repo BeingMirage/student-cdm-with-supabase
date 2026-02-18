@@ -33,6 +33,7 @@ export default function ProfilePage() {
        const [activeTab, setActiveTab] = useState<Tab>("Overview")
        const { user, profile, isLoading: authLoading } = useAuth()
        const [diagnosticReport, setDiagnosticReport] = useState<any>(null)
+       const [allReports, setAllReports] = useState<Record<string, any>>({})
        const [isLoadingReport, setIsLoadingReport] = useState(false)
        const [reportFlags, setReportFlags] = useState<ReportFlags>({
               "Diagnostic Interview": false,
@@ -108,9 +109,9 @@ export default function ProfilePage() {
               fetchParticulars()
        }, [profile, authLoading])
 
-       // Fetch diagnostic report from cdm_student_reports via cdm_session_attendees
+       // Fetch ALL reports from cdm_student_reports via cdm_session_attendees
        useEffect(() => {
-              const fetchDiagnosticReport = async () => {
+              const fetchAllReports = async () => {
                      if (authLoading) return
                      if (!profile) return
                      setIsLoadingReport(true)
@@ -128,45 +129,64 @@ export default function ProfilePage() {
 
                             const attendeeIds = attendees.map(a => a.id)
 
-                            // Get the latest diagnostic report linked to these attendees
-                            const { data, error } = await supabase
+                            // Get ALL reports linked to these attendees
+                            const { data: reports, error } = await supabase
                                    .from('cdm_student_reports')
                                    .select('*')
                                    .in('attendee_id', attendeeIds)
                                    .order('created_at', { ascending: false })
-                                   .limit(1)
-                                   .maybeSingle()
 
                             if (error) {
-                                   console.error('Error fetching diagnostic report:', error)
-                            } else if (data) {
-                                   // Flatten report_data fields for backward-compatible access
-                                   const rd = data.report_data || {}
-                                   setDiagnosticReport({
-                                          ...data,
-                                          mentor_name: rd.meta?.mentor_name,
-                                          average_rating: rd.meta?.overall_rating,
-                                          improvement_areas: rd.feedback_summary?.areas_for_improvement,
-                                          targeted_roles: rd.feedback_summary?.target_roles,
-                                          strongest_aspects: rd.feedback_summary?.strongest_aspects,
-                                          fit_job_families: rd.feedback_summary?.job_fit,
-                                          backup_roles: rd.feedback_summary?.plan_b_c,
-                                          sections: rd.sections || [],
-                                   })
+                                   console.error('Error fetching reports:', error)
+                            } else if (reports && reports.length > 0) {
+                                   const reportsMap: Record<string, any> = {}
+
+                                   for (const data of reports) {
+                                          const type = (data.report_type || '').toLowerCase()
+                                          // Keep first (latest) per type
+                                          if (!reportsMap[type]) {
+                                                 const rd = data.report_data || {}
+                                                 reportsMap[type] = {
+                                                        ...data,
+                                                        mentor_name: rd.meta?.mentor_name,
+                                                        average_rating: rd.meta?.overall_rating,
+                                                        overall_score: rd.meta?.overall_score,
+                                                        improvement_areas: rd.feedback_summary?.areas_for_improvement,
+                                                        targeted_roles: rd.feedback_summary?.target_roles,
+                                                        strongest_aspects: rd.feedback_summary?.strongest_aspects,
+                                                        fit_job_families: rd.feedback_summary?.job_fit,
+                                                        backup_roles: rd.feedback_summary?.plan_b_c,
+                                                        sections: rd.sections || [],
+                                                 }
+                                          }
+                                   }
+
+                                   setAllReports(reportsMap)
+
+                                   // Set diagnosticReport for backward compatibility
+                                   const diagKey = Object.keys(reportsMap).find(k => k.includes('diagnostic'))
+                                   if (diagKey) {
+                                          setDiagnosticReport(reportsMap[diagKey])
+                                   }
                             }
                      } catch (err) {
-                            console.error('Unexpected error fetching diagnostic report:', err)
+                            console.error('Unexpected error fetching reports:', err)
                      } finally {
                             setIsLoadingReport(false)
                      }
               }
 
-              fetchDiagnosticReport()
+              fetchAllReports()
        }, [profile, authLoading])
 
        // Helper: find particular matching a report type
        const findParticular = (type: ReportType): Particular | undefined => {
               return particularsData.find(p => p.particulars?.toLowerCase().includes(type.toLowerCase()))
+       }
+
+       // Helper: find report by type keyword
+       const findReportByType = (typeKeyword: string): any | null => {
+              return Object.entries(allReports).find(([key]) => key.includes(typeKeyword.toLowerCase()))?.[1] || null
        }
 
        // Build tabs dynamically: Overview always + only report types that exist
@@ -252,24 +272,24 @@ export default function ProfilePage() {
 
                      {/* Content */}
                      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-6 md:py-8">
-                            {/* Mobile Journey Dropdown — visible only below md */}
-                            <div className="md:hidden mb-6">
+                            {/* Mobile Journey Dropdown — visible only below lg */}
+                            <div className="lg:hidden mb-6">
                                    <MobileJourneyDropdown journeyItems={journeyItems} isLoading={isLoadingParticulars} />
                             </div>
 
                             <div className="flex flex-col md:flex-row gap-6 lg:gap-8">
                                    {/* Left Sidebar — hidden on mobile, shown on md+ */}
-                                   <div className="hidden md:block md:basis-60 md:w-60 shrink-0 space-y-6">
+                                   <div className="hidden lg:block w-[240px] shrink-0 space-y-6">
                                           <Sidebar journeyItems={journeyItems} isLoading={isLoadingParticulars} />
                                    </div>
 
                                    {/* Main Content */}
                                    <div className="flex-1 min-w-0">
-                                          {activeTab === "Overview" && <OverviewTab diagnosticReport={diagnosticReport} reportFlags={reportFlags} />}
+                                          {activeTab === "Overview" && <OverviewTab diagnosticReport={diagnosticReport} reportFlags={reportFlags} allReports={allReports} />}
                                           {activeTab === "Diagnostic Interview" && <DiagnosticInterviewTab report={diagnosticReport} isLoading={isLoadingReport} particular={findParticular("Diagnostic Interview")} />}
-                                          {activeTab === "Resume Review" && <ResumeReviewTab particular={findParticular("Resume Review")} />}
-                                          {activeTab === "Practice Interview" && <PracticeInterviewTab particular={findParticular("Practice Interview")} />}
-                                          {activeTab === "AI Interview" && <AIInterviewTab particular={findParticular("AI Interview")} />}
+                                          {activeTab === "Resume Review" && <ResumeReviewTab report={findReportByType('resume')} isLoading={isLoadingReport} particular={findParticular("Resume Review")} />}
+                                          {activeTab === "Practice Interview" && <PracticeInterviewTab report={findReportByType('practice')} isLoading={isLoadingReport} particular={findParticular("Practice Interview")} />}
+                                          {activeTab === "AI Interview" && <AIInterviewTab report={findReportByType('ai')} isLoading={isLoadingReport} particular={findParticular("AI Interview")} />}
                                    </div>
                             </div>
                      </div>
@@ -406,21 +426,32 @@ function formatDate(dateStr: string | null | undefined): string | null {
 
 // ─── Overview Tab ────────────────────────────────────────────────────
 
-function OverviewTab({ diagnosticReport, reportFlags }: { diagnosticReport: any; reportFlags: ReportFlags }) {
+function OverviewTab({ diagnosticReport, reportFlags, allReports }: { diagnosticReport: any; reportFlags: ReportFlags; allReports: Record<string, any> }) {
        const hasDiagnostic = !!diagnosticReport
        const avgRating = diagnosticReport?.average_rating
        const readiness = avgRating >= 4 ? "High" : avgRating >= 3 ? "Medium" : "Developing"
        const readinessColor = readiness === "High" ? "bg-green-100 text-green-700" : readiness === "Medium" ? "bg-orange-100 text-orange-600" : "bg-red-100 text-red-600"
 
-       // Build roadmap items from report flags
+       // Count available reports
+       const availableReportCount = Object.keys(allReports).length
+
+       // Build roadmap items from report flags, adding actual data from allReports
        const roadmapItems = [
-              { label: "Diagnostic Interview", rating: hasDiagnostic ? avgRating : null },
-              { label: "Resume Review", rating: null },
-              { label: "Practice Interview", rating: null },
-              { label: "AI Interview Report", rating: null },
+              { label: "Diagnostic Interview", typeKey: "diagnostic", link: "/profile/diagnostic-report" },
+              { label: "Resume Review", typeKey: "resume", link: "/profile/resume-report" },
+              { label: "Practice Interview", typeKey: "practice", link: "/profile/practice-report" },
+              { label: "AI Interview Report", typeKey: "ai", link: "/profile/ai-report" },
        ].filter(item => {
               const key = item.label.replace(' Report', '') as ReportType
               return reportFlags[key] !== undefined ? reportFlags[key] : false
+       }).map(item => {
+              const report = Object.entries(allReports).find(([k]) => k.includes(item.typeKey))?.[1]
+              return {
+                     ...item,
+                     rating: report?.average_rating ?? report?.report_data?.meta?.overall_rating ?? null,
+                     score: report?.report_data?.meta?.overall_score ?? null,
+                     hasReport: !!report,
+              }
        })
 
        return (
@@ -516,17 +547,34 @@ function OverviewTab({ diagnosticReport, reportFlags }: { diagnosticReport: any;
                                    <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden">
                                           {roadmapItems.map((item, i) => (
                                                  <div key={i} className={`flex items-center justify-between px-6 py-4 ${i < roadmapItems.length - 1 ? "border-b border-gray-100" : ""}`}>
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-3">
+                                                               <span className={`size-2 rounded-full ${item.hasReport ? 'bg-green-500' : 'bg-gray-300'}`} />
                                                                <span className="text-sm font-medium text-[#1e232c]">{item.label}</span>
                                                                {item.rating != null && (
                                                                       <span className="flex items-center gap-1 text-sm text-gray-500">
-                                                                             <Star className="size-3.5 text-[#FF9E44] fill-[#FF9E44]" /> {item.rating}
+                                                                             <Star className="size-3.5 text-[#FF9E44] fill-[#FF9E44]" /> {Number(item.rating).toFixed(1)}
                                                                       </span>
                                                                )}
+                                                               {item.score != null && (
+                                                                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                                                             Score: {item.score}
+                                                                      </span>
+                                                               )}
+                                                               {!item.hasReport && (
+                                                                      <span className="text-[10px] text-gray-400 italic">Pending</span>
+                                                               )}
                                                         </div>
-                                                        <Button variant="outline" className="text-xs rounded-lg border-gray-200 h-8">
-                                                               View Report
-                                                        </Button>
+                                                        {item.hasReport ? (
+                                                               <Link href={item.link}>
+                                                                      <Button variant="outline" className="text-xs rounded-lg border-gray-200 h-8">
+                                                                             View Report
+                                                                      </Button>
+                                                               </Link>
+                                                        ) : (
+                                                               <Button variant="outline" className="text-xs rounded-lg border-gray-200 h-8" disabled>
+                                                                      Not Available
+                                                               </Button>
+                                                        )}
                                                  </div>
                                           ))}
                                    </Card>
@@ -721,18 +769,232 @@ function GenericReportTab({ title, particular, reportLink }: { title: string; pa
 
 // ─── Resume Review Tab ────────────────────────────────────────────────
 
-function ResumeReviewTab({ particular }: { particular?: Particular }) {
-       return <GenericReportTab title="Resume Review" particular={particular} reportLink="/profile/resume-report" />
+function ResumeReviewTab({ report, isLoading, particular }: { report: any; isLoading: boolean; particular?: Particular }) {
+       if (isLoading) return <div className="p-8 text-center text-gray-500">Loading resume review report...</div>
+       if (!report) return <GenericReportTab title="Resume Review" particular={particular} reportLink="/profile/resume-report" />
+
+       const rd = report.report_data || {}
+       const meta = rd.meta || {}
+       const sections = rd.sections || []
+       const totalComments = sections.reduce((acc: number, s: any) =>
+              acc + ((s.groups || []).reduce((g: number, gr: any) => g + (gr.items?.length || 0), 0)), 0)
+
+       return (
+              <div className="space-y-6">
+                     <div className="flex items-center justify-between">
+                            <div>
+                                   <h2 className="text-xl font-bold text-[#1e232c]">Resume Review</h2>
+                                   {meta.date && (
+                                          <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-1">
+                                                 <Calendar className="size-3.5" /> Reviewed on {meta.date}
+                                          </p>
+                                   )}
+                            </div>
+                            <Link href="/profile/resume-report">
+                                   <Button variant="outline" className="rounded-lg gap-2 text-sm border-gray-200">
+                                          <ExternalLink className="size-4" /> View Full Report
+                                   </Button>
+                            </Link>
+                     </div>
+
+                     {meta.mentor_name && (
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
+                                   <h3 className="font-bold text-[#1e232c] mb-3">Reviewer</h3>
+                                   <p className="text-sm text-gray-600">Reviewed by <strong>{meta.mentor_name}</strong></p>
+                            </Card>
+                     )}
+
+                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                                   <p className="text-xs text-gray-400 mb-2">Sections Reviewed</p>
+                                   <p className="text-3xl font-bold text-[#1e232c]">{sections.length}</p>
+                            </Card>
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                                   <p className="text-xs text-gray-400 mb-2">Total Comments</p>
+                                   <p className="text-3xl font-bold text-[#1e232c]">{totalComments}</p>
+                            </Card>
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                                   <p className="text-xs text-gray-400 mb-2">Report Status</p>
+                                   <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full">Available</span>
+                            </Card>
+                     </div>
+
+                     {sections.length > 0 && (
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
+                                   <h3 className="font-bold text-[#1e232c] mb-4">Review Sections</h3>
+                                   <div className="space-y-3">
+                                          {sections.map((s: any, i: number) => (
+                                                 <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                                                        <span className="text-sm text-gray-700">{s.title}</span>
+                                                        <span className="text-xs text-gray-400">
+                                                               {(s.groups || []).reduce((acc: number, g: any) => acc + (g.items?.length || 0), 0)} comments
+                                                        </span>
+                                                 </div>
+                                          ))}
+                                   </div>
+                            </Card>
+                     )}
+              </div>
+       )
 }
 
 // ─── Practice Interview Tab ──────────────────────────────────────────
 
-function PracticeInterviewTab({ particular }: { particular?: Particular }) {
-       return <GenericReportTab title="Practice Interview" particular={particular} reportLink="/profile/practice-report" />
+function PracticeInterviewTab({ report, isLoading, particular }: { report: any; isLoading: boolean; particular?: Particular }) {
+       if (isLoading) return <div className="p-8 text-center text-gray-500">Loading practice interview report...</div>
+       if (!report) return <GenericReportTab title="Practice Interview" particular={particular} reportLink="/profile/practice-report" />
+
+       const rd = report.report_data || {}
+       const meta = rd.meta || {}
+       const overallScore = meta.overall_score || 'N/A'
+       const skillBreakdown = rd.skill_breakdown || []
+       const keyRemarks = rd.key_remarks
+
+       return (
+              <div className="space-y-6">
+                     <div className="flex items-center justify-between">
+                            <div>
+                                   <h2 className="text-xl font-bold text-[#1e232c]">Practice Interview</h2>
+                                   {meta.date && (
+                                          <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-1">
+                                                 <Calendar className="size-3.5" /> Completed on {meta.date}
+                                          </p>
+                                   )}
+                            </div>
+                            <Link href="/profile/practice-report">
+                                   <Button variant="outline" className="rounded-lg gap-2 text-sm border-gray-200">
+                                          <ExternalLink className="size-4" /> View Full Report
+                                   </Button>
+                            </Link>
+                     </div>
+
+                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                                   <p className="text-xs text-gray-400 mb-2">Overall Score</p>
+                                   <p className="text-3xl font-bold text-[#FF9E44]">{overallScore}</p>
+                            </Card>
+                            {meta.mentor_name && (
+                                   <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                                          <p className="text-xs text-gray-400 mb-2">Interviewer</p>
+                                          <p className="text-lg font-bold text-[#1e232c]">{meta.mentor_name}</p>
+                                   </Card>
+                            )}
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                                   <p className="text-xs text-gray-400 mb-2">Skills Assessed</p>
+                                   <p className="text-3xl font-bold text-[#1e232c]">{skillBreakdown.length}</p>
+                            </Card>
+                     </div>
+
+                     {skillBreakdown.length > 0 && (
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
+                                   <h3 className="font-bold text-[#1e232c] mb-4">Skill Breakdown</h3>
+                                   <div className="grid grid-cols-2 gap-3">
+                                          {skillBreakdown.map((skill: any, i: number) => (
+                                                 <div key={i} className="flex items-center justify-between">
+                                                        <span className="text-sm text-gray-700">{skill.name}</span>
+                                                        <div className="flex items-center gap-0.5">
+                                                               {Array.from({ length: 5 }, (_, si) => (
+                                                                      <Star key={si} className={`size-3.5 ${si < (skill.rating || 0) ? "text-[#FF9E44] fill-[#FF9E44]" : "text-gray-200 fill-gray-200"}`} />
+                                                               ))}
+                                                        </div>
+                                                 </div>
+                                          ))}
+                                   </div>
+                            </Card>
+                     )}
+
+                     {keyRemarks && (
+                            <Card className="p-5 rounded-2xl border-orange-200 bg-orange-50 shadow-sm">
+                                   <div className="flex items-start gap-3">
+                                          <span className="text-lg">⭐</span>
+                                          <div>
+                                                 <p className="font-semibold text-[#1e232c] mb-1">Key Remarks</p>
+                                                 <p className="text-sm text-gray-700 leading-relaxed">{keyRemarks}</p>
+                                          </div>
+                                   </div>
+                            </Card>
+                     )}
+              </div>
+       )
 }
 
 // ─── AI Interview Tab ────────────────────────────────────────────────
 
-function AIInterviewTab({ particular }: { particular?: Particular }) {
-       return <GenericReportTab title="AI Interview" particular={particular} reportLink="/profile/ai-report" />
+function AIInterviewTab({ report, isLoading, particular }: { report: any; isLoading: boolean; particular?: Particular }) {
+       if (isLoading) return <div className="p-8 text-center text-gray-500">Loading AI interview report...</div>
+       if (!report) return <GenericReportTab title="AI Interview" particular={particular} reportLink="/profile/ai-report" />
+
+       const rd = report.report_data || {}
+       const meta = rd.meta || {}
+       const overallScores = rd.overall_scores || []
+       const skillBreakdown = rd.skill_breakdown || []
+       const questions = rd.questions || []
+
+       return (
+              <div className="space-y-6">
+                     <div className="flex items-center justify-between">
+                            <div>
+                                   <h2 className="text-xl font-bold text-[#1e232c]">AI Interview</h2>
+                                   {meta.date && (
+                                          <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-1">
+                                                 <Calendar className="size-3.5" /> Completed on {meta.date}
+                                          </p>
+                                   )}
+                            </div>
+                            <Link href="/profile/ai-report">
+                                   <Button variant="outline" className="rounded-lg gap-2 text-sm border-gray-200">
+                                          <ExternalLink className="size-4" /> View Full Report
+                                   </Button>
+                            </Link>
+                     </div>
+
+                     {overallScores.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                   {overallScores.map((s: any, i: number) => {
+                                          const color = s.value >= 80 ? 'text-green-600 bg-green-50' : s.value >= 60 ? 'text-blue-600 bg-blue-50' : 'text-red-500 bg-red-50'
+                                          return (
+                                                 <Card key={i} className="p-4 rounded-2xl border-gray-100 shadow-sm text-center">
+                                                        <p className="text-xs text-gray-400 mb-1">{s.label}</p>
+                                                        <p className={`text-2xl font-bold ${color.split(' ')[0]}`}>{s.value}%</p>
+                                                        <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${color}`}>
+                                                               {s.status || (s.value >= 80 ? 'Great' : s.value >= 60 ? 'Good' : 'Needs Work')}
+                                                        </span>
+                                                 </Card>
+                                          )
+                                   })}
+                            </div>
+                     )}
+
+                     {skillBreakdown.length > 0 && (
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
+                                   <h3 className="font-bold text-[#1e232c] mb-4">Skill Breakdown</h3>
+                                   <div className="space-y-3">
+                                          {skillBreakdown.map((skill: any, i: number) => {
+                                                 const scoreVal = parseInt(skill.score) || 0
+                                                 return (
+                                                        <div key={i} className="flex items-center gap-4">
+                                                               <span className="text-sm text-gray-700 w-40 shrink-0">{skill.name}</span>
+                                                               <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                                                                      <div className="h-full bg-[#FF9E44] rounded-full" style={{ width: `${scoreVal}%` }} />
+                                                               </div>
+                                                               <span className="text-sm font-bold text-[#1e232c] w-16 text-right">{skill.score}</span>
+                                                        </div>
+                                                 )
+                                          })}
+                                   </div>
+                            </Card>
+                     )}
+
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                                   <p className="text-xs text-gray-400 mb-2">Questions Assessed</p>
+                                   <p className="text-3xl font-bold text-[#1e232c]">{questions.length}</p>
+                            </Card>
+                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                                   <p className="text-xs text-gray-400 mb-2">Report Status</p>
+                                   <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full">Available</span>
+                            </Card>
+                     </div>
+              </div>
+       )
 }

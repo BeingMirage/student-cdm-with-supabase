@@ -1,0 +1,44 @@
+{
+       "meta": {
+              "date": "2024-11-20",
+              "mentee_name": "Sudeshna Saha",
+              "mentor_name": "Rohit",
+              "overall_rating": 4.7,
+              "report_version": "v1_hr"
+       },
+       "sections": [
+              {
+                     "title": "Clarity of Thought",
+                     "rating": 4
+              },
+              {
+                     "title": "Professional Communication",
+                     "rating": 5
+              },
+              {
+                     "title": "Body Language & Tone",
+                     "rating": 5
+              },
+              {
+                     "title": "Interpersonal Skills & Teamwork",
+                     "rating": 4
+              },
+              {
+                     "title": "Handling Challenging Questions",
+                     "rating": 5
+              },
+              {
+                     "title": "Clarity of Career Goals",
+                     "rating": 5
+              }
+       ],
+       "feedback_summary": {
+              "red_flags": "Nothing in particular. Needs to prepare for her answer on 2 masters",
+              "strengths": "",
+              "red_flag_remarks": "",
+              "overall_impression": "Good candidate. Just needs to work on her introductory spiel better",
+              "additional_strengths": "Great at data and creative arts. Overall excellence.",
+              "areas_for_improvement": "Needs to articulate her story better. She needs to make it flow logically, linearly without any gaps",
+              "career_goals_articulation": "Sudeshna is very clear about her career aspirations, her expectation and way forward. Great at building logical answers from past experiences"
+       }
+}

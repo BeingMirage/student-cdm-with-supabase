@@ -1,0 +1,45 @@
+{
+       "meta": {
+              "date": "2024-11-20",
+              "mentee_name": "Aman Dawra",
+              "mentor_name": "Kanishak Chauhan",
+              "overall_rating": 3,
+              "report_version": "v1_resume"
+       },
+       "sections": [
+              {
+                     "title": "First Impression",
+                     "rating": 3,
+                     "comments": "1. Well formatted resume, maintained ample spacing with minimal white space\n 2. Covered the professional experience and other activities thoroughly"
+              },
+              {
+                     "title": "Effectiveness of Career Summary",
+                     "rating": 2,
+                     "comments": "1. Need to make statements specific and impact oriented\n 2. Remove redundant words\n 3. Highlight personal venture more prominently"
+              },
+              {
+                     "title": "Professional Experience",
+                     "rating": 3
+              },
+              {
+                     "title": "Function-Specific Skills",
+                     "rating": 3
+              },
+              {
+                     "title": "Leadership & Team Management",
+                     "rating": 2
+              },
+              {
+                     "title": "Language & Professional Writing",
+                     "rating": 3
+              }
+       ],
+       "feedback_summary": {
+              "strengths": "1. Detailed resume covers all the aspects thoroughly \n 2. Covers different aspects of the role including domain expertise and technical skills \n 3. Well formatted",
+              "next_steps": "1. Update the resume as per the discussion \n 2. Start preparing for the case studies as it is a major part of any consulting interview \n 3. Don't have same resume for all roles. Create separate versions for each roles based on its specific requirements",
+              "resume_alignment": "1. For consulting the student needs to structure the statements with impact oriented statements. Use SMART framework as discussed \n 2. Add separate line items for personal venture, it's a bug plus for you\n 3. Highlight capabilities as per the requirements of the role they you'll apply for",
+              "areas_for_improvement": "1. Need to restructure statements as per SMART framework\n 2. Bring out the impact upfront \n 3. Need to make sure vague statements are not included",
+              "specific_recommendations": "1. Highlight the personal venture more prominently. It's a great point to highlight and create differentia\n 2. Add 1 or 2 liner intro to each role covering basic description and responsibilities \n 3. Make all statements impact oriented. Bring out the impact upfront and quantify the same",
+              "certifications_tools_courses": "Not required, already has many statements"
+       }
+}

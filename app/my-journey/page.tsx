@@ -1,6 +1,6 @@
 "use client"
 
-import { Calendar, Clock, Users, CheckCircle2, Star, X, Info } from "lucide-react"
+import { Calendar, Clock, Users, CheckCircle2, Star, X, Info, ExternalLink } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,7 @@ import { useAuth } from "@/components/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 // Updated type to reflect the joined data structure
 type JourneyItem = {
@@ -38,14 +39,25 @@ type JourneyItem = {
        }
 }
 
+// Map report_type to the full-report page route
+function getReportRoute(reportType: string): string {
+       const t = reportType.toLowerCase()
+       if (t.includes('diagnostic')) return '/profile/diagnostic-report'
+       if (t.includes('resume')) return '/profile/resume-report'
+       if (t.includes('practice')) return '/profile/practice-report'
+       if (t.includes('ai')) return '/profile/ai-report'
+       return '/profile'
+}
+
 export default function MyJourneyPage() {
        const { profile, isLoading: authLoading } = useAuth()
        const [particulars, setParticulars] = useState<JourneyItem[]>([])
        const [instituteName, setInstituteName] = useState<string | null>(null)
        const [isLoading, setIsLoading] = useState(true)
        const [selectedParticular, setSelectedParticular] = useState<JourneyItem | null>(null)
-       const [diagnosticReport, setDiagnosticReport] = useState<any>(null)
-       const [isLoadingReport, setIsLoadingReport] = useState(false)
+       // All reports keyed by journey_item_id
+       const [reportsByJourneyItem, setReportsByJourneyItem] = useState<Record<string, any>>({})
+       const [isLoadingReports, setIsLoadingReports] = useState(false)
        const supabase = createClient()
        const router = useRouter()
 
@@ -133,51 +145,63 @@ export default function MyJourneyPage() {
               fetchJourneyItems()
        }, [authLoading, profile, router])
 
-       // Fetch diagnostic report when a diagnostic interview card is clicked
-       const handleCardClick = async (item: JourneyItem) => {
-              setSelectedParticular(item)
-              // Ideally check product_code or module category, but fallback to string matching
-              const isDiagnostic = item.particulars?.toLowerCase().includes('diagnostic interview') ||
-                     item.cdm_products?.cdm_modules?.category?.toLowerCase() === 'diagnostic'
+       // Fetch ALL reports for this student once on load
+       useEffect(() => {
+              if (authLoading || !profile) return
 
-              if (isDiagnostic && !diagnosticReport) {
-                     setIsLoadingReport(true)
+              const fetchAllReports = async () => {
+                     setIsLoadingReports(true)
                      try {
-                            // Find journey sessions for this student
-                            const { data: sessions } = await supabase
-                                   .from('cdm_journey_sessions')
-                                   .select('id')
-                                   .eq('student_id', profile?.id)
+                            // Find session attendees for this student
+                            const { data: attendees } = await supabase
+                                   .from('cdm_session_attendees')
+                                   .select('id, journey_item_id')
+                                   .eq('student_id', profile.id)
 
-                            if (sessions && sessions.length > 0) {
-                                   const sessionIds = sessions.map(s => s.id)
+                            if (!attendees || attendees.length === 0) {
+                                   setIsLoadingReports(false)
+                                   return
+                            }
 
-                                   const { data, error } = await supabase
-                                          .from('cdm_student_reports')
-                                          .select('*')
-                                          .in('session_id', sessionIds)
-                                          .order('created_at', { ascending: false })
-                                          .limit(1)
-                                          .maybeSingle()
+                            const attendeeIds = attendees.map(a => a.id)
 
-                                   if (!error && data) {
-                                          // Flatten report_data fields for backward-compatible access
-                                          const rd = data.report_data || {}
-                                          setDiagnosticReport({
-                                                 ...data,
-                                                 mentor_name: rd.meta?.mentor_name,
-                                                 average_rating: rd.meta?.overall_rating,
-                                                 improvement_areas: rd.feedback_summary?.areas_for_improvement,
-                                                 strongest_aspects: rd.feedback_summary?.strongest_aspects,
-                                          })
+                            const { data: reports, error } = await supabase
+                                   .from('cdm_student_reports')
+                                   .select('*')
+                                   .in('attendee_id', attendeeIds)
+                                   .order('created_at', { ascending: false })
+
+                            if (!error && reports) {
+                                   const reportsMap: Record<string, any> = {}
+                                   for (const r of reports) {
+                                          const jiId = r.journey_item_id
+                                          if (jiId && !reportsMap[jiId]) {
+                                                 const rd = r.report_data || {}
+                                                 reportsMap[jiId] = {
+                                                        ...r,
+                                                        mentor_name: rd.meta?.mentor_name,
+                                                        average_rating: rd.meta?.overall_rating,
+                                                        overall_score: rd.meta?.overall_score,
+                                                        improvement_areas: rd.feedback_summary?.areas_for_improvement,
+                                                        strongest_aspects: rd.feedback_summary?.strongest_aspects,
+                                                 }
+                                          }
                                    }
+                                   setReportsByJourneyItem(reportsMap)
                             }
                      } catch (err) {
-                            console.error('Error fetching diagnostic report:', err)
+                            console.error('Error fetching reports:', err)
                      } finally {
-                            setIsLoadingReport(false)
+                            setIsLoadingReports(false)
                      }
               }
+
+              fetchAllReports()
+       }, [authLoading, profile])
+
+       // Handle card click — report data is pre-fetched
+       const handleCardClick = (item: JourneyItem) => {
+              setSelectedParticular(item)
        }
 
        // Compute overall start/end dates from all particulars
@@ -290,6 +314,7 @@ export default function MyJourneyPage() {
                                           <ModuleCard
                                                  key={p.id}
                                                  item={p}
+                                                 report={reportsByJourneyItem[p.id]}
                                                  onClick={() => handleCardClick(p)}
                                           />
                                    ))}
@@ -299,8 +324,8 @@ export default function MyJourneyPage() {
                      {/* Session Details Dialog */}
                      <SessionDetailsDialog
                             item={selectedParticular}
-                            diagnosticReport={diagnosticReport}
-                            isLoadingReport={isLoadingReport}
+                            report={selectedParticular ? reportsByJourneyItem[selectedParticular.id] : null}
+                            isLoadingReport={isLoadingReports}
                             open={!!selectedParticular}
                             onOpenChange={(open) => {
                                    if (!open) setSelectedParticular(null)
@@ -312,11 +337,13 @@ export default function MyJourneyPage() {
 
 // ─── Module Card ──────────────────────────────────────────────────────
 
-function ModuleCard({ item, onClick }: { item: JourneyItem; onClick: () => void }) {
+function ModuleCard({ item, report, onClick }: { item: JourneyItem; report?: any; onClick: () => void }) {
        const statusColor =
               item.status === 'Completed' ? 'text-green-600 bg-green-50' :
                      item.status === 'In Progress' ? 'text-blue-600 bg-blue-50' :
                             'text-gray-500 bg-gray-50'
+
+       const hasReport = !!report
 
        return (
               <div
@@ -326,16 +353,31 @@ function ModuleCard({ item, onClick }: { item: JourneyItem; onClick: () => void 
                      <div className="space-y-3">
                             <div className="flex justify-between items-start gap-2">
                                    <h4 className="font-bold text-[#1e232c] leading-tight text-lg">{item.particulars}</h4>
-                                   {item.status && (
-                                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full shrink-0 ${statusColor}`}>
-                                                 {item.status}
-                                          </span>
-                                   )}
+                                   <div className="flex flex-col items-end gap-1">
+                                          {item.status && (
+                                                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full shrink-0 ${statusColor}`}>
+                                                        {item.status}
+                                                 </span>
+                                          )}
+                                          {hasReport && (
+                                                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full shrink-0 text-orange-600 bg-orange-50">
+                                                        Report Available
+                                                 </span>
+                                          )}
+                                   </div>
                             </div>
                             {item.cdm_products?.cdm_modules?.description && (
                                    <p className="text-sm text-gray-500 line-clamp-2">
                                           {item.cdm_products.cdm_modules.description}
                                    </p>
+                            )}
+                            {/* Show rating if report has one */}
+                            {report?.average_rating != null && (
+                                   <div className="flex items-center gap-1.5">
+                                          <Star className="size-4 fill-[#FF9E44] text-[#FF9E44]" />
+                                          <span className="text-sm font-semibold text-[#1e232c]">{Number(report.average_rating).toFixed(1)}</span>
+                                          <span className="text-xs text-gray-400">/ 5</span>
+                                   </div>
                             )}
                      </div>
 
@@ -362,19 +404,21 @@ function ModuleCard({ item, onClick }: { item: JourneyItem; onClick: () => void 
 
 function SessionDetailsDialog({
        item,
-       diagnosticReport,
+       report,
        isLoadingReport,
        open,
        onOpenChange,
 }: {
        item: JourneyItem | null
-       diagnosticReport: any
+       report: any
        isLoadingReport: boolean
        open: boolean
        onOpenChange: (open: boolean) => void
 }) {
        if (!item) return null
 
+       const hasReport = !!report
+       const reportRoute = report ? getReportRoute(report.report_type || '') : null
        const isDiagnostic = item.particulars?.toLowerCase().includes('diagnostic interview') ||
               item.cdm_products?.cdm_modules?.category?.toLowerCase() === 'diagnostic'
 
@@ -465,41 +509,39 @@ function SessionDetailsDialog({
                                           </div>
                                    </div>
 
-                                   {/* Diagnostic-specific content */}
-                                   {isDiagnostic && (
+                                   {/* Report Data — shown for any module that has a report */}
+                                   {isLoadingReport ? (
+                                          <div className="text-center py-4">
+                                                 <p className="text-sm text-gray-400 animate-pulse">Loading report data...</p>
+                                          </div>
+                                   ) : hasReport ? (
                                           <>
                                                  {/* Mentor Section */}
-                                                 {isLoadingReport ? (
-                                                        <div className="text-center py-4">
-                                                               <p className="text-sm text-gray-400 animate-pulse">Loading report data...</p>
-                                                        </div>
-                                                 ) : diagnosticReport?.mentor_name ? (
+                                                 {report.mentor_name && (
                                                         <div className="space-y-4">
                                                                <h3 className="text-lg font-bold text-[#0f172b]">Your Mentor</h3>
                                                                <div className="border border-gray-200 rounded-[14px] p-5 space-y-4 shadow-sm">
-                                                                      {/* Mentor Info */}
                                                                       <div className="flex items-center gap-4">
                                                                              <div className="size-14 rounded-full bg-gradient-to-br from-[#FF9E44] to-[#F77F00] flex items-center justify-center text-white text-xl font-bold shrink-0 shadow-md">
-                                                                                    {diagnosticReport.mentor_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+                                                                                    {report.mentor_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
                                                                              </div>
                                                                              <div>
-                                                                                    <h4 className="text-lg font-bold text-[#0f172b]">{diagnosticReport.mentor_name}</h4>
-                                                                                    {diagnosticReport.average_rating != null && (
+                                                                                    <h4 className="text-lg font-bold text-[#0f172b]">{report.mentor_name}</h4>
+                                                                                    {report.average_rating != null && (
                                                                                            <div className="flex items-center gap-1 mt-1">
                                                                                                   <Star className="size-3.5 fill-[#FF9E44] text-[#FF9E44]" />
-                                                                                                  <span className="text-sm font-semibold text-[#0f172b]">{Number(diagnosticReport.average_rating).toFixed(1)}</span>
+                                                                                                  <span className="text-sm font-semibold text-[#0f172b]">{Number(report.average_rating).toFixed(1)}</span>
                                                                                                   <span className="text-xs text-gray-500 ml-1">Rating</span>
                                                                                            </div>
                                                                                     )}
                                                                              </div>
                                                                       </div>
 
-                                                                      {/* Strongest Aspects as expertise */}
-                                                                      {diagnosticReport.strongest_aspects && (
+                                                                      {report.strongest_aspects && (
                                                                              <div className="space-y-2 pt-2 border-t border-gray-100">
                                                                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Key Strengths Identified</p>
                                                                                     <div className="flex flex-wrap gap-2">
-                                                                                           {diagnosticReport.strongest_aspects.split(',').map((tag: string, i: number) => (
+                                                                                           {report.strongest_aspects.split(',').map((tag: string, i: number) => (
                                                                                                   <span key={i} className="bg-gray-100 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200">
                                                                                                          {tag.trim()}
                                                                                                   </span>
@@ -508,24 +550,36 @@ function SessionDetailsDialog({
                                                                              </div>
                                                                       )}
 
-                                                                      {/* Improvement areas as about */}
-                                                                      {diagnosticReport.improvement_areas && (
+                                                                      {report.improvement_areas && (
                                                                              <div className="space-y-2 pt-2 border-t border-gray-100">
                                                                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Feedback Summary</p>
                                                                                     <p className="text-sm text-gray-600 leading-relaxed italic">
-                                                                                           "{diagnosticReport.improvement_areas}"
+                                                                                           "{report.improvement_areas}"
                                                                                     </p>
                                                                              </div>
                                                                       )}
                                                                </div>
                                                         </div>
-                                                 ) : (
-                                                        <div className="bg-gray-50 rounded-xl p-4 text-center border border-dashed border-gray-300">
-                                                               <p className="text-sm text-gray-400">Mentor report not available yet.</p>
-                                                        </div>
                                                  )}
 
-                                                 {/* Session Agenda */}
+                                                 {/* View Full Report Button */}
+                                                 {reportRoute && (
+                                                        <Link href={reportRoute}>
+                                                               <Button className="w-full rounded-[12px] h-12 text-base font-medium bg-[#FF9E44] hover:bg-[#e88d3a] text-white">
+                                                                      View Full Report
+                                                               </Button>
+                                                        </Link>
+                                                 )}
+                                          </>
+                                   ) : (
+                                          <div className="bg-gray-50 rounded-xl p-4 text-center border border-dashed border-gray-300">
+                                                 <p className="text-sm text-gray-400">Report not available yet for this module.</p>
+                                          </div>
+                                   )}
+
+                                   {/* Diagnostic-specific agenda & prep tips */}
+                                   {isDiagnostic && (
+                                          <>
                                                  <div className="space-y-4">
                                                         <h3 className="text-lg font-bold text-[#0f172b]">Session Agenda</h3>
                                                         <div className="space-y-4">
@@ -543,7 +597,6 @@ function SessionDetailsDialog({
                                                         </div>
                                                  </div>
 
-                                                 {/* How to Prepare */}
                                                  <div className="space-y-4">
                                                         <h3 className="text-lg font-bold text-[#0f172b]">How to Prepare</h3>
                                                         <div className="bg-gray-50 border border-gray-200 rounded-[14px] p-5 space-y-3">

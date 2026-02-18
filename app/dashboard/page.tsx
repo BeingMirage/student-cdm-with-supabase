@@ -65,7 +65,7 @@ export default function DashboardPage() {
                                                  <p className="text-gray-500 text-sm">Interviews</p>
                                           </div>
                                    </div>
-                                   <Button className="bg-[#161616] text-white px-5 h-10 rounded-xl hover:bg-black w-full md:w-auto shrink-0 whitespace-nowrap text-sm">
+                                   <Button className="bg-[#161616] text-white px-6 py-4 h-auto rounded-xl hover:bg-black w-full xl:w-auto whitespace-nowrap text-sm lg:text-base">
                                           Complete Profile
                                    </Button>
                             </div>

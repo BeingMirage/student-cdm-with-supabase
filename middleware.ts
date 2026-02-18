@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
+// Routes that require authentication
+const protectedRoutes = ['/dashboard', '/profile', '/my-journey']
+
 export async function middleware(request: NextRequest) {
        let supabaseResponse = NextResponse.next({
               request,
@@ -27,9 +30,19 @@ export async function middleware(request: NextRequest) {
               }
        )
 
-       // IMPORTANT: Do not remove this getUser() call.
-       // It refreshes the auth token.
-       await supabase.auth.getUser()
+       // IMPORTANT: Use getUser() not getSession() for security.
+       // getUser() validates the token with the Supabase server.
+       const { data: { user } } = await supabase.auth.getUser()
+
+       const { pathname } = request.nextUrl
+
+       // If the user is NOT logged in and tries to access a protected route, redirect to /login
+       const isProtected = protectedRoutes.some(route => pathname.startsWith(route))
+       if (!user && isProtected) {
+              const loginUrl = request.nextUrl.clone()
+              loginUrl.pathname = '/login'
+              return NextResponse.redirect(loginUrl)
+       }
 
        return supabaseResponse
 }
@@ -41,7 +54,6 @@ export const config = {
                * - _next/static (static files)
                * - _next/image (image optimization files)
                * - favicon.ico (favicon file)
-               * Feel free to modify this pattern to include more paths.
                */
               '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
        ],

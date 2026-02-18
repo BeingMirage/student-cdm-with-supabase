@@ -181,7 +181,7 @@ export function ChecklistSection({
 }: {
        title: string
        rating?: number
-       items: { text: string; value: boolean }[]
+       items: { text: string; value: boolean; is_positive?: boolean }[]
 }) {
        return (
               <div className="border border-gray-100 rounded-2xl overflow-hidden">
@@ -191,21 +191,29 @@ export function ChecklistSection({
                      </div>
                      <div className="divide-y divide-gray-100">
                             {items && items.length > 0 ? (
-                                   items.map((item, i) => (
-                                          <div key={i} className="flex items-center justify-between px-6 py-3.5">
-                                                 <p className="text-sm text-gray-700 flex-1">{item.text}</p>
-                                                 <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${item.value
-                                                        ? "bg-green-50 text-green-600"
-                                                        : "bg-red-50 text-red-500"
-                                                        }`}>
-                                                        {item.value ? (
-                                                               <><CheckCircle2 className="size-3.5" /> Yes</>
-                                                        ) : (
-                                                               <><XCircle className="size-3.5" /> No</>
-                                                        )}
-                                                 </span>
-                                          </div>
-                                   ))
+                                   items.map((item, i) => {
+                                          // Determine if this result is "good" or "bad":
+                                          // Positive trait + Yes = good | Positive trait + No = bad
+                                          // Negative trait + Yes = bad  | Negative trait + No = good
+                                          const isPositive = item.is_positive ?? true
+                                          const isGood = isPositive ? item.value : !item.value
+
+                                          return (
+                                                 <div key={i} className="flex items-center justify-between px-6 py-3.5">
+                                                        <p className="text-sm text-gray-700 flex-1">{item.text}</p>
+                                                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${isGood
+                                                               ? "bg-green-50 text-green-600"
+                                                               : "bg-red-50 text-red-500"
+                                                               }`}>
+                                                               {item.value ? (
+                                                                      <><CheckCircle2 className="size-3.5" /> Yes</>
+                                                               ) : (
+                                                                      <><XCircle className="size-3.5" /> No</>
+                                                               )}
+                                                        </span>
+                                                 </div>
+                                          )
+                                   })
                             ) : (
                                    <div className="px-6 py-3.5 text-sm text-gray-500 italic">No checklist items available</div>
                             )}
