@@ -55,6 +55,7 @@ export default function MyJourneyPage() {
        const [instituteName, setInstituteName] = useState<string | null>(null)
        const [isLoading, setIsLoading] = useState(true)
        const [selectedParticular, setSelectedParticular] = useState<JourneyItem | null>(null)
+       const [selectedCategory, setSelectedCategory] = useState<string>('All')
        // All reports keyed by journey_item_id
        const [reportsByJourneyItem, setReportsByJourneyItem] = useState<Record<string, any>>({})
        const [isLoadingReports, setIsLoadingReports] = useState(false)
@@ -207,6 +208,17 @@ export default function MyJourneyPage() {
        // Compute overall start/end dates from all particulars
        const overallDates = computeOverallDates(particulars)
 
+       // Extract unique categories
+       const categories = ['All', ...Array.from(new Set(
+              particulars
+                     .map(p => p.cdm_products?.cdm_modules?.category)
+                     .filter(Boolean) as string[]
+       ))].sort()
+
+       const filteredParticulars = selectedCategory === 'All'
+              ? particulars
+              : particulars.filter(p => p.cdm_products?.cdm_modules?.category === selectedCategory)
+
        // Calculate stats
        const totalSessions = particulars.length
        // Assuming 'Completed' status in DB, or past end_date
@@ -303,14 +315,37 @@ export default function MyJourneyPage() {
                             <h1 className="text-2xl sm:text-4xl font-bold text-[#1e232c]">Career Development Module</h1>
                      </div>
 
+                     {/* Category Filter */}
+                     {particulars.length > 0 && (
+                            <div className="flex flex-wrap justify-center gap-2">
+                                   {categories.map(category => (
+                                          <Button
+                                                 key={category}
+                                                 onClick={() => setSelectedCategory(category)}
+                                                 variant={selectedCategory === category ? "default" : "outline"}
+                                                 className={`rounded-full px-6 transition-all duration-200 ${selectedCategory === category
+                                                        ? "bg-[#FF9E44] hover:bg-[#e88d3a] text-white border-transparent shadow-md"
+                                                        : "bg-white border-gray-200 text-gray-600 hover:text-[#FF9E44] hover:border-[#FF9E44]"
+                                                        }`}
+                                          >
+                                                 {category}
+                                          </Button>
+                                   ))}
+                            </div>
+                     )}
+
                      {/* Module Cards Grid */}
-                     {particulars.length === 0 ? (
+                     {filteredParticulars.length === 0 ? (
                             <div className="text-center py-16">
-                                   <p className="text-gray-400 text-lg">No modules found for your institute.</p>
+                                   <p className="text-gray-400 text-lg">
+                                          {particulars.length === 0
+                                                 ? "No modules found for your institute."
+                                                 : "No modules found in this category."}
+                                   </p>
                             </div>
                      ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                                   {particulars.map((p) => (
+                                   {filteredParticulars.map((p) => (
                                           <ModuleCard
                                                  key={p.id}
                                                  item={p}

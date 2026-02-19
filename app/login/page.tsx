@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Eye, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client"
 export default function LoginPage() {
        const [isLoading, setIsLoading] = useState(false)
        const [error, setError] = useState<string | null>(null)
+       const [showPassword, setShowPassword] = useState(false)
        const supabase = createClient()
 
        const handleLogin = async (e: React.FormEvent) => {
@@ -119,14 +120,19 @@ export default function LoginPage() {
                                                                <label className="text-[16px] text-[#0c1421] tracking-[0.16px]">Password</label>
                                                                <div className="relative">
                                                                       <Input
-                                                                             type="password"
+                                                                             type={showPassword ? "text" : "password"}
                                                                              name="password"
                                                                              placeholder="Enter your password"
                                                                              className="h-[56px] bg-[#f7fbff] border-[#d4d7e3] text-[16px] placeholder:text-[#8897ad] rounded-[12px] pr-12"
                                                                              required
                                                                       />
-                                                                      <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
-                                                                             <Eye className="size-5" />
+                                                                      <button
+                                                                             type="button"
+                                                                             onClick={() => setShowPassword(!showPassword)}
+                                                                             className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                                                                             aria-label={showPassword ? "Hide password" : "Show password"}
+                                                                      >
+                                                                             {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
                                                                       </button>
                                                                </div>
                                                         </div>
@@ -171,6 +177,6 @@ export default function LoginPage() {
                                    </div>
                             </div>
                      </div>
-              </div>
+              </div >
        )
 }

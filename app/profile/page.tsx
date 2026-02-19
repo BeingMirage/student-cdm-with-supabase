@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import {
        Mail, Phone, MapPin, FileText, Download, Share2,
        CheckCircle2, Star, Calendar, ExternalLink,
-       Clock, AlertCircle, ChevronDown
+       Clock, AlertCircle, ChevronDown, LogOut
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
@@ -44,6 +44,11 @@ export default function ProfilePage() {
        const [particularsData, setParticularsData] = useState<Particular[]>([])
        const [isLoadingParticulars, setIsLoadingParticulars] = useState(true)
        const supabase = createClient()
+
+       const handleLogout = async () => {
+              await supabase.auth.signOut()
+              window.location.href = '/login'
+       }
 
        // Fetch institute particulars to determine which report types exist
        useEffect(() => {
@@ -223,6 +228,9 @@ export default function ProfilePage() {
                                           <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-200 hidden sm:flex">
                                                  <Share2 className="size-4" /> Share
                                           </Button>
+                                          <Button onClick={handleLogout} variant="outline" className="rounded-lg gap-2 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 hidden sm:flex">
+                                                 <LogOut className="size-4" /> Logout
+                                          </Button>
                                           {/* Mobile: icon-only buttons */}
                                           <Button variant="outline" size="icon" className="rounded-lg border-gray-200 sm:hidden">
                                                  <FileText className="size-4" />
@@ -232,6 +240,9 @@ export default function ProfilePage() {
                                           </Button>
                                           <Button variant="outline" size="icon" className="rounded-lg border-gray-200 sm:hidden">
                                                  <Share2 className="size-4" />
+                                          </Button>
+                                          <Button onClick={handleLogout} variant="outline" size="icon" className="rounded-lg border-red-300 text-red-600 hover:bg-red-50 sm:hidden">
+                                                 <LogOut className="size-4" />
                                           </Button>
                                    </div>
                             </div>

@@ -2,10 +2,8 @@
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Download, Play, Star, CheckCircle2, XCircle, ChevronLeft } from "lucide-react"
+import { Download, Star, CheckCircle2, XCircle, ChevronLeft } from "lucide-react"
 import Link from "next/link"
-
-// ─── Report Header (Dark Banner) ─────────────────────────────────────
 
 export function ReportHeader({
        title,
@@ -16,6 +14,10 @@ export function ReportHeader({
        subtitle?: string
        date?: string
 }) {
+       const handleDownload = () => {
+              window.print()
+       }
+
        return (
               <div className="bg-[#1e232c] text-white">
                      <div className="max-w-[1400px] mx-auto px-8">
@@ -24,11 +26,11 @@ export function ReportHeader({
                                           <h1 className="text-xl font-bold">{title}</h1>
                                           <p className="text-sm text-gray-400">{subtitle}</p>
                                    </div>
-                                   <div className="flex items-center gap-3">
-                                          <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-600 text-white hover:bg-gray-700 bg-transparent">
-                                                 <Play className="size-4" /> View Recording
-                                          </Button>
-                                          <Button className="rounded-lg gap-2 text-sm font-medium bg-[#FF9E44] hover:bg-[#e88d3a] text-white">
+                                   <div id="report-actions" className="flex items-center gap-3 print:hidden">
+                                          <Button
+                                                 onClick={handleDownload}
+                                                 className="rounded-lg gap-2 text-sm font-medium bg-[#FF9E44] hover:bg-[#e88d3a] text-white"
+                                          >
                                                  <Download className="size-4" /> Download Report
                                           </Button>
                                    </div>
