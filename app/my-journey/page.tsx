@@ -221,12 +221,15 @@ export default function MyJourneyPage() {
 
        // Calculate stats
        const totalSessions = particulars.length
-       // Assuming 'Completed' status in DB, or past end_date
        const completedSessions = particulars.filter(p =>
-              p.status === 'Completed' || (p.end_date && new Date(p.end_date) < new Date())
+              p.status?.toLowerCase() === 'completed'
        ).length
-       const inProgressSessions = particulars.filter(p => p.status === 'In Progress').length
-       const upcomingSessions = totalSessions - completedSessions - inProgressSessions
+       const inProgressSessions = particulars.filter(p =>
+              p.status?.toLowerCase() === 'in progress'
+       ).length
+       const yetToBeScheduled = particulars.filter(p =>
+              p.status?.toLowerCase() === 'yet to be scheduled'
+       ).length
        const progressPercent = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0
 
        if (authLoading || isLoading) {
@@ -303,7 +306,7 @@ export default function MyJourneyPage() {
                                           <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mt-1">In Progress</p>
                                    </div>
                                    <div className="border border-gray-200 rounded-[14px] p-4 text-center">
-                                          <p className="text-2xl font-semibold text-[#0f172b]">{upcomingSessions}</p>
+                                          <p className="text-2xl font-semibold text-[#0f172b]">{yetToBeScheduled}</p>
                                           <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mt-1">Upcoming</p>
                                    </div>
                             </div>
