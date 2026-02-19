@@ -12,35 +12,31 @@ import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 
-// ─── Constants ───────────────────────────────────────────────────────
-
-const REPORT_TYPES = ["Diagnostic Interview", "Resume Review", "Practice Interview", "AI Interview"] as const
-type ReportType = (typeof REPORT_TYPES)[number]
-
-type Tab = "Overview" | ReportType
-type ReportFlags = Record<ReportType, boolean>
-
-// ─── Main Component ──────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────
 
 type Particular = {
-       id: number
+       id: string
        particulars: string
        start_date: string | null
        end_date: string | null
+       status: string | null
 }
 
+// Each report stored individually with a generated tab label
+type ReportEntry = {
+       tabLabel: string        // e.g. "Diagnostic Interview 1"
+       reportType: string      // original report_type from DB
+       journeyItemId: string | null
+       report: any             // full report data
+}
+
+// ─── Main Component ──────────────────────────────────────────────────
+
 export default function ProfilePage() {
-       const [activeTab, setActiveTab] = useState<Tab>("Overview")
+       const [activeTab, setActiveTab] = useState<string>("Overview")
        const { user, profile, isLoading: authLoading } = useAuth()
-       const [diagnosticReport, setDiagnosticReport] = useState<any>(null)
-       const [allReports, setAllReports] = useState<Record<string, any>>({})
+       const [reportEntries, setReportEntries] = useState<ReportEntry[]>([])
        const [isLoadingReport, setIsLoadingReport] = useState(false)
-       const [reportFlags, setReportFlags] = useState<ReportFlags>({
-              "Diagnostic Interview": false,
-              "Resume Review": false,
-              "Practice Interview": false,
-              "AI Interview": false,
-       })
        const [particularsData, setParticularsData] = useState<Particular[]>([])
        const [isLoadingParticulars, setIsLoadingParticulars] = useState(true)
        const supabase = createClient()
@@ -50,19 +46,16 @@ export default function ProfilePage() {
               window.location.href = '/login'
        }
 
-       // Fetch institute particulars to determine which report types exist
+       // Fetch institute particulars (all modules for the student)
        useEffect(() => {
               const fetchParticulars = async () => {
-                     // Wait for auth to load
                      if (authLoading) return
-
                      if (!profile?.institute_name) {
                             setIsLoadingParticulars(false)
                             return
                      }
 
                      try {
-                            // Get institute ID from cdm_institutes
                             const { data: institute } = await supabase
                                    .from('cdm_institutes')
                                    .select('id')
@@ -74,7 +67,6 @@ export default function ProfilePage() {
                                    return
                             }
 
-                            // Get learning journeys for this institute
                             const { data: journeys } = await supabase
                                    .from('cdm_learning_journeys')
                                    .select('id')
@@ -87,22 +79,14 @@ export default function ProfilePage() {
 
                             const journeyIds = journeys.map(j => j.id)
 
-                            // Get all journey items (particulars) for these journeys
                             const { data: particulars } = await supabase
                                    .from('cdm_learning_journey_items')
-                                   .select('id, particulars, start_date, end_date')
+                                   .select('id, particulars, start_date, end_date, status')
                                    .in('learning_journey_id', journeyIds)
+                                   .order('start_date', { ascending: true })
 
                             if (particulars) {
                                    setParticularsData(particulars)
-                                   const allNames = particulars.map(p => p.particulars?.toLowerCase() || '')
-                                   const flags: ReportFlags = {
-                                          "Diagnostic Interview": allNames.some(n => n.includes('diagnostic interview')),
-                                          "Resume Review": allNames.some(n => n.includes('resume review')),
-                                          "Practice Interview": allNames.some(n => n.includes('practice interview')),
-                                          "AI Interview": allNames.some(n => n.includes('ai interview')),
-                                   }
-                                   setReportFlags(flags)
                             }
                      } catch (err) {
                             console.error('Error fetching journey items:', err)
@@ -114,14 +98,12 @@ export default function ProfilePage() {
               fetchParticulars()
        }, [profile, authLoading])
 
-       // Fetch ALL reports from cdm_student_reports via cdm_session_attendees
+       // Fetch ALL reports and build numbered tab entries
        useEffect(() => {
               const fetchAllReports = async () => {
-                     if (authLoading) return
-                     if (!profile) return
+                     if (authLoading || !profile) return
                      setIsLoadingReport(true)
                      try {
-                            // Find session attendees for this student
                             const { data: attendees } = await supabase
                                    .from('cdm_session_attendees')
                                    .select('id')
@@ -134,24 +116,30 @@ export default function ProfilePage() {
 
                             const attendeeIds = attendees.map(a => a.id)
 
-                            // Get ALL reports linked to these attendees
                             const { data: reports, error } = await supabase
                                    .from('cdm_student_reports')
                                    .select('*')
                                    .in('attendee_id', attendeeIds)
-                                   .order('created_at', { ascending: false })
+                                   .order('created_at', { ascending: true })
 
                             if (error) {
                                    console.error('Error fetching reports:', error)
                             } else if (reports && reports.length > 0) {
-                                   const reportsMap: Record<string, any> = {}
+                                   // Group by report_type, then number them
+                                   const countByType: Record<string, number> = {}
+                                   const entries: ReportEntry[] = []
 
                                    for (const data of reports) {
-                                          const type = (data.report_type || '').toLowerCase()
-                                          // Keep first (latest) per type
-                                          if (!reportsMap[type]) {
-                                                 const rd = data.report_data || {}
-                                                 reportsMap[type] = {
+                                          const type = data.report_type || 'Report'
+                                          countByType[type] = (countByType[type] || 0) + 1
+                                          const num = countByType[type]
+
+                                          const rd = data.report_data || {}
+                                          entries.push({
+                                                 tabLabel: `${type} ${num}`,
+                                                 reportType: type,
+                                                 journeyItemId: data.journey_item_id,
+                                                 report: {
                                                         ...data,
                                                         mentor_name: rd.meta?.mentor_name,
                                                         average_rating: rd.meta?.overall_rating,
@@ -162,17 +150,11 @@ export default function ProfilePage() {
                                                         fit_job_families: rd.feedback_summary?.job_fit,
                                                         backup_roles: rd.feedback_summary?.plan_b_c,
                                                         sections: rd.sections || [],
-                                                 }
-                                          }
+                                                 },
+                                          })
                                    }
 
-                                   setAllReports(reportsMap)
-
-                                   // Set diagnosticReport for backward compatibility
-                                   const diagKey = Object.keys(reportsMap).find(k => k.includes('diagnostic'))
-                                   if (diagKey) {
-                                          setDiagnosticReport(reportsMap[diagKey])
-                                   }
+                                   setReportEntries(entries)
                             }
                      } catch (err) {
                             console.error('Unexpected error fetching reports:', err)
@@ -184,30 +166,31 @@ export default function ProfilePage() {
               fetchAllReports()
        }, [profile, authLoading])
 
-       // Helper: find particular matching a report type
-       const findParticular = (type: ReportType): Particular | undefined => {
-              return particularsData.find(p => p.particulars?.toLowerCase().includes(type.toLowerCase()))
-       }
+       // Build dynamic tabs: Overview + one per report entry
+       const activeTabs: string[] = ["Overview", ...reportEntries.map(e => e.tabLabel)]
 
-       // Helper: find report by type keyword
-       const findReportByType = (typeKeyword: string): any | null => {
-              return Object.entries(allReports).find(([key]) => key.includes(typeKeyword.toLowerCase()))?.[1] || null
-       }
+       // Build journey items from ALL particulars for sidebar
+       const journeyItems = particularsData.map(p => {
+              const statusLower = (p.status || '').toLowerCase()
+              const color =
+                     statusLower === 'completed' ? 'bg-green-500' :
+                            statusLower === 'in progress' ? 'bg-blue-500' :
+                                   'bg-gray-400'
+              return {
+                     title: p.particulars,
+                     color,
+                     status: p.status || 'Not Scheduled',
+              }
+       })
 
-       // Build tabs dynamically: Overview always + only report types that exist
-       const activeTabs: Tab[] = ["Overview", ...REPORT_TYPES.filter(r => reportFlags[r])]
+       // Find the active report entry
+       const activeReportEntry = reportEntries.find(e => e.tabLabel === activeTab)
 
-       // Build journey items dynamically
-       const journeyItems = REPORT_TYPES
-              .filter(r => reportFlags[r])
-              .map(r => {
-                     const p = findParticular(r)
-                     return {
-                            title: p?.particulars || r,
-                            color: "bg-orange-500",
-                            status: "Completed",
-                     }
-              })
+       // Find the first diagnostic report for the Overview tab
+       const diagnosticEntry = reportEntries.find(e =>
+              e.reportType.toLowerCase().includes('diagnostic')
+       )
+       const diagnosticReport = diagnosticEntry?.report || null
 
        return (
               <div className="min-h-screen bg-[#F8F9FB]">
@@ -278,11 +261,14 @@ export default function ProfilePage() {
 
                                    {/* Main Content */}
                                    <div className="flex-1 min-w-0">
-                                          {activeTab === "Overview" && <OverviewTab diagnosticReport={diagnosticReport} reportFlags={reportFlags} allReports={allReports} />}
-                                          {activeTab === "Diagnostic Interview" && <DiagnosticInterviewTab report={diagnosticReport} isLoading={isLoadingReport} particular={findParticular("Diagnostic Interview")} />}
-                                          {activeTab === "Resume Review" && <ResumeReviewTab report={findReportByType('resume')} isLoading={isLoadingReport} particular={findParticular("Resume Review")} />}
-                                          {activeTab === "Practice Interview" && <PracticeInterviewTab report={findReportByType('practice')} isLoading={isLoadingReport} particular={findParticular("Practice Interview")} />}
-                                          {activeTab === "AI Interview" && <AIInterviewTab report={findReportByType('ai')} isLoading={isLoadingReport} particular={findParticular("AI Interview")} />}
+                                          {activeTab === "Overview" && <OverviewTab diagnosticReport={diagnosticReport} reportEntries={reportEntries} particularsData={particularsData} />}
+                                          {activeTab !== "Overview" && activeReportEntry && (
+                                                 <DynamicReportTab
+                                                        entry={activeReportEntry}
+                                                        isLoading={isLoadingReport}
+                                                        particular={particularsData.find(p => p.id === activeReportEntry.journeyItemId)}
+                                                 />
+                                          )}
                                    </div>
                             </div>
                      </div>
@@ -419,31 +405,31 @@ function formatDate(dateStr: string | null | undefined): string | null {
 
 // ─── Overview Tab ────────────────────────────────────────────────────
 
-function OverviewTab({ diagnosticReport, reportFlags, allReports }: { diagnosticReport: any; reportFlags: ReportFlags; allReports: Record<string, any> }) {
+function OverviewTab({ diagnosticReport, reportEntries, particularsData }: { diagnosticReport: any; reportEntries: ReportEntry[]; particularsData: Particular[] }) {
        const hasDiagnostic = !!diagnosticReport
        const avgRating = diagnosticReport?.average_rating
        const readiness = avgRating >= 4 ? "High" : avgRating >= 3 ? "Medium" : "Developing"
        const readinessColor = readiness === "High" ? "bg-green-100 text-green-700" : readiness === "Medium" ? "bg-orange-100 text-orange-600" : "bg-red-100 text-red-600"
 
-       // Count available reports
-       const availableReportCount = Object.keys(allReports).length
+       // Map report types to their report links
+       const reportLinkMap: Record<string, string> = {
+              'diagnostic interview': '/profile/diagnostic-report',
+              'resume review': '/profile/resume-report',
+              'practice interview': '/profile/practice-report',
+              'ai interview': '/profile/ai-report',
+       }
 
-       // Build roadmap items from report flags, adding actual data from allReports
-       const roadmapItems = [
-              { label: "Diagnostic Interview", typeKey: "diagnostic", link: "/profile/diagnostic-report" },
-              { label: "Resume Review", typeKey: "resume", link: "/profile/resume-report" },
-              { label: "Practice Interview", typeKey: "practice", link: "/profile/practice-report" },
-              { label: "AI Interview Report", typeKey: "ai", link: "/profile/ai-report" },
-       ].filter(item => {
-              const key = item.label.replace(' Report', '') as ReportType
-              return reportFlags[key] !== undefined ? reportFlags[key] : false
-       }).map(item => {
-              const report = Object.entries(allReports).find(([k]) => k.includes(item.typeKey))?.[1]
+       // Build roadmap items from all report entries
+       const roadmapItems = reportEntries.map(entry => {
+              const report = entry.report
+              const link = Object.entries(reportLinkMap)
+                     .find(([k]) => entry.reportType.toLowerCase().includes(k))?.[1] || '#'
               return {
-                     ...item,
+                     label: entry.tabLabel,
+                     link,
                      rating: report?.average_rating ?? report?.report_data?.meta?.overall_rating ?? null,
                      score: report?.report_data?.meta?.overall_score ?? null,
-                     hasReport: !!report,
+                     hasReport: true,
               }
        })
 
@@ -481,9 +467,9 @@ function OverviewTab({ diagnosticReport, reportFlags, allReports }: { diagnostic
                                           </Card>
                                    )}
                                    <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
-                                          <p className="text-xs text-gray-400 mb-2">Modules Completed</p>
-                                          <p className="text-3xl font-bold text-[#1e232c]">{Object.values(reportFlags).filter(Boolean).length}</p>
-                                          <p className="text-[10px] text-gray-400 mt-1">of {REPORT_TYPES.length} report types</p>
+                                          <p className="text-xs text-gray-400 mb-2">Reports Available</p>
+                                          <p className="text-3xl font-bold text-[#1e232c]">{reportEntries.length}</p>
+                                          <p className="text-[10px] text-gray-400 mt-1">of {particularsData.length} modules</p>
                                    </Card>
                             </div>
                      )}
@@ -492,9 +478,9 @@ function OverviewTab({ diagnosticReport, reportFlags, allReports }: { diagnostic
                      {!hasDiagnostic && (
                             <div className="grid grid-cols-1 gap-4">
                                    <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
-                                          <p className="text-xs text-gray-400 mb-2">Modules Completed</p>
-                                          <p className="text-3xl font-bold text-[#1e232c]">{Object.values(reportFlags).filter(Boolean).length}</p>
-                                          <p className="text-[10px] text-gray-400 mt-1">of {REPORT_TYPES.length} report types</p>
+                                          <p className="text-xs text-gray-400 mb-2">Reports Available</p>
+                                          <p className="text-3xl font-bold text-[#1e232c]">{reportEntries.length}</p>
+                                          <p className="text-[10px] text-gray-400 mt-1">of {particularsData.length} modules</p>
                                    </Card>
                             </div>
                      )}
@@ -553,21 +539,12 @@ function OverviewTab({ diagnosticReport, reportFlags, allReports }: { diagnostic
                                                                              Score: {item.score}
                                                                       </span>
                                                                )}
-                                                               {!item.hasReport && (
-                                                                      <span className="text-[10px] text-gray-400 italic">Pending</span>
-                                                               )}
                                                         </div>
-                                                        {item.hasReport ? (
-                                                               <Link href={item.link}>
-                                                                      <Button variant="outline" className="text-xs rounded-lg border-gray-200 h-8">
-                                                                             View Report
-                                                                      </Button>
-                                                               </Link>
-                                                        ) : (
-                                                               <Button variant="outline" className="text-xs rounded-lg border-gray-200 h-8" disabled>
-                                                                      Not Available
+                                                        <Link href={item.link}>
+                                                               <Button variant="outline" className="text-xs rounded-lg border-gray-200 h-8">
+                                                                      View Report
                                                                </Button>
-                                                        )}
+                                                        </Link>
                                                  </div>
                                           ))}
                                    </Card>
@@ -582,6 +559,28 @@ function OverviewTab({ diagnosticReport, reportFlags, allReports }: { diagnostic
                      )}
               </div>
        )
+}
+
+// ─── Dynamic Report Tab Dispatcher ───────────────────────────────────
+
+function DynamicReportTab({ entry, isLoading, particular }: { entry: ReportEntry; isLoading: boolean; particular?: Particular }) {
+       const type = entry.reportType.toLowerCase()
+
+       if (type.includes('diagnostic')) {
+              return <DiagnosticInterviewTab report={entry.report} isLoading={isLoading} particular={particular} />
+       }
+       if (type.includes('resume')) {
+              return <ResumeReviewTab report={entry.report} isLoading={isLoading} particular={particular} />
+       }
+       if (type.includes('practice')) {
+              return <PracticeInterviewTab report={entry.report} isLoading={isLoading} particular={particular} />
+       }
+       if (type.includes('ai')) {
+              return <AIInterviewTab report={entry.report} isLoading={isLoading} particular={particular} />
+       }
+
+       // Fallback for unknown report types
+       return <GenericReportTab title={entry.tabLabel} particular={particular} />
 }
 
 // ─── Diagnostic Interview Tab ────────────────────────────────────────

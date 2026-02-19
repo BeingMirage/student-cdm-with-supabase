@@ -42,8 +42,16 @@ export default function LoginPage() {
                             return
                      }
 
-                     // Wait for cookies to be fully written before navigating
-                     await new Promise(resolve => setTimeout(resolve, 100))
+                     // Wait until the session is fully persisted and retrievable
+                     // This prevents the race condition where navigation happens before
+                     // cookies/storage are written, causing infinite loading on dashboard
+                     let retries = 0
+                     while (retries < 15) {
+                            await new Promise(resolve => setTimeout(resolve, 200))
+                            const { data: check } = await supabase.auth.getSession()
+                            if (check.session) break
+                            retries++
+                     }
 
                      // Full page navigation to ensure auth cookies are sent with the request
                      window.location.href = '/dashboard'
