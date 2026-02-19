@@ -24,8 +24,11 @@ export default function DashboardPage() {
                                           {isLoading ? "..." : userInitials}
                                    </div>
                                    <div className="space-y-2 min-w-0">
-                                          <h1 className="text-2xl lg:text-3xl font-bold text-[#1e232c] flex items-center gap-2 truncate">
-                                                 Welcome Back, {isLoading ? "..." : firstName}! <span className="text-2xl">👋</span>
+                                          <h1 className="text-2xl lg:text-3xl font-bold text-[#1e232c]">
+                                                 <span className="flex items-center gap-2">
+                                                        <span>Welcome Back,</span> <span className="text-2xl">👋</span>
+                                                 </span>
+                                                 <span className="block sm:inline truncate">{isLoading ? "..." : firstName}!</span>
                                           </h1>
                                           <div className="flex flex-col gap-1.5">
                                                  {profile?.institute_name && (

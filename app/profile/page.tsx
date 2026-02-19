@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
-       Mail, Phone, MapPin, FileText, Download, Share2,
+       Mail, Phone, MapPin,
        CheckCircle2, Star, Calendar, ExternalLink,
        Clock, AlertCircle, ChevronDown, LogOut
 } from "lucide-react"
@@ -219,28 +219,10 @@ export default function ProfilePage() {
                                           <p className="text-xs md:text-sm text-[#FF9E44]">Comprehensive student profile and progress tracking</p>
                                    </div>
                                    <div className="flex items-center gap-2 md:gap-3">
-                                          <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-200 hidden sm:flex">
-                                                 <FileText className="size-4" /> View Resume
-                                          </Button>
-                                          <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-200 hidden sm:flex">
-                                                 <Download className="size-4" /> Download
-                                          </Button>
-                                          <Button variant="outline" className="rounded-lg gap-2 text-sm font-medium border-gray-200 hidden sm:flex">
-                                                 <Share2 className="size-4" /> Share
-                                          </Button>
                                           <Button onClick={handleLogout} variant="outline" className="rounded-lg gap-2 text-sm font-medium border-red-300 text-red-600 hover:bg-red-50 hidden sm:flex">
                                                  <LogOut className="size-4" /> Logout
                                           </Button>
-                                          {/* Mobile: icon-only buttons */}
-                                          <Button variant="outline" size="icon" className="rounded-lg border-gray-200 sm:hidden">
-                                                 <FileText className="size-4" />
-                                          </Button>
-                                          <Button variant="outline" size="icon" className="rounded-lg border-gray-200 sm:hidden">
-                                                 <Download className="size-4" />
-                                          </Button>
-                                          <Button variant="outline" size="icon" className="rounded-lg border-gray-200 sm:hidden">
-                                                 <Share2 className="size-4" />
-                                          </Button>
+                                          {/* Mobile: icon-only button */}
                                           <Button onClick={handleLogout} variant="outline" size="icon" className="rounded-lg border-red-300 text-red-600 hover:bg-red-50 sm:hidden">
                                                  <LogOut className="size-4" />
                                           </Button>
