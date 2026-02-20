@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "date": "2024-11-20",
+    "mentee_name": "AKSHAY JITENDRA JOSHI",
+    "mentor_name": "Digwanta Chakraborty",
+    "overall_rating": 3,
+    "report_version": "v1_hr"
+  },
+  "sections": [
+    {
+      "title": "Clarity of Thought",
+      "rating": 3
+    },
+    {
+      "title": "Professional Communication",
+      "rating": 3
+    },
+    {
+      "title": "Body Language & Tone",
+      "rating": 3
+    },
+    {
+      "title": "Interpersonal Skills & Teamwork",
+      "rating": 3
+    },
+    {
+      "title": "Handling Challenging Questions",
+      "rating": 3
+    },
+    {
+      "title": "Clarity of Career Goals",
+      "rating": 3
+    }
+  ],
+  "feedback_summary": {
+    "red_flags": "the candidate did not join the call we waited for 20 mins",
+    "strengths": "the candidate did not join the call we waited for 20 mins",
+    "red_flag_remarks": "the candidate did not join the call we waited for 20 mins",
+    "overall_impression": "the candidate did not join the call we waited for 20 mins",
+    "additional_strengths": "",
+    "areas_for_improvement": "the candidate did not join the call we waited for 20 mins",
+    "career_goals_articulation": "the candidate did not join the call we waited for 20 mins"
+  }
+}

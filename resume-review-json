@@ -1,0 +1,45 @@
+{
+       "meta": {
+              "date": "2024-11-20",
+              "mentee_name": "M V S S SAICHARAN",
+              "mentor_name": "Kanishak Chauhan",
+              "overall_rating": 2,
+              "report_version": "v1_resume"
+       },
+       "sections": [
+              {
+                     "title": "First Impression",
+                     "rating": 2,
+                     "comments": "Formatting is inconsistent in terms of spacing, white spaces, overflowing headings (Grey boxes). Additionally, the resume is one and a half pages long"
+              },
+              {
+                     "title": "Effectiveness of Career Summary",
+                     "rating": 3,
+                     "comments": "1. Covers all important points thoroughly\n 2. However need to restructure the statements to make them more impact/achievements oriented"
+              },
+              {
+                     "title": "Professional Experience",
+                     "rating": 3
+              },
+              {
+                     "title": "Function-Specific Skills",
+                     "rating": 4
+              },
+              {
+                     "title": "Leadership & Team Management",
+                     "rating": 3
+              },
+              {
+                     "title": "Language & Professional Writing",
+                     "rating": 3
+              }
+       ],
+       "feedback_summary": {
+              "strengths": "1. . Thorough coverage of the professional experience as well as extra curriculars \n 2. Relevant metrics are provided in most of the places \n 3. Career highlights are well written",
+              "next_steps": "1. Restructure the resume as per the discussion \n 2. Start preparing for case studies and personal interviews for upcoming placements \n 3. Also connect with alumni with your type of experience to the type of jobs you are targeting",
+              "resume_alignment": "Need to restructure the statements to make it consulting ready. While the candidate has covered all the relevant points in the experience, but need to make sure that the capabilities required in consulting - problem solving skills, stakeholder management and leadership aspects - come out well",
+              "areas_for_improvement": "1. Formatting needs a lot of work. Make sure white space is minimized and resume is limited to only one page \n 2. Restructure the statements to be more impact oriented \n 3. Try to cull non essential points which might not create differentiation",
+              "specific_recommendations": "1. Restructure the statements as per SMART framework and get the impact upfront followed by what you did and how you did \n 2. Try to make sure the spikes in the resume are highlighted we'll\n 3. Optimize the resume as per the requirements of the role you are applying for",
+              "certifications_tools_courses": "Not required"
+       }
+}
