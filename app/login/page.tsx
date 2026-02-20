@@ -34,12 +34,7 @@ export default function LoginPage() {
               }, 5000)
 
               try {
-                     const { data, error: authError } = await Promise.race([
-                            supabase.auth.signInWithPassword({ email, password }),
-                            new Promise<never>((_, reject) =>
-                                   setTimeout(() => reject(new Error("Server is slow to respond. Please try again.")), 30000)
-                            )
-                     ])
+                     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
                      clearTimeout(slowTimer)
 
