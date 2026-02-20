@@ -17,8 +17,8 @@ import { createClient } from "@/lib/supabase/client"
 
 export default function PracticeReportPage() {
        const { user, profile } = useAuth()
-       const [report, setReport] = useState<any>(null)
-       const [reportData, setReportData] = useState<any>(null)
+       const [report, setReport] = useState<Record<string, unknown> | null>(null)
+       const [reportData, setReportData] = useState<Record<string, unknown> | null>(null)
        const [loading, setLoading] = useState(true)
        const supabase = createClient()
 
@@ -40,7 +40,7 @@ export default function PracticeReportPage() {
 
                             const attendeeIds = attendees.map(a => a.id)
 
-                            const { data: reports, error } = await supabase
+                            const { data: reports } = await supabase
                                    .from("cdm_student_reports")
                                    .select("*")
                                    .in("attendee_id", attendeeIds)

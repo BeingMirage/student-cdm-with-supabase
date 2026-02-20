@@ -44,10 +44,26 @@ const getScoreColor = (score: number) => {
 
 // ─── Page Component ──────────────────────────────────────────────────
 
+type AIReportData = {
+       meta?: Record<string, string>;
+       overall_scores?: Array<{ value: number; label: string; status?: string }>;
+       skill_breakdown?: Array<{ name: string; score: string | number; tag?: string }>;
+       questions?: Array<{ number: number; category: string; score: number | string; question: string; feedback: string; strengths?: string[]; improvements?: string[]; suggestedResponse?: string }>;
+       recommendations?: Array<{ icon: string; title: string; text: string }>;
+       alert_message?: string;
+       transcript?: { messages: Record<string, unknown>[]; duration: string; length: number };
+};
+
+type AIReport = {
+       report_type: string;
+       report_data?: AIReportData;
+       [key: string]: unknown;
+};
+
 export default function AIReportPage() {
        const { user, profile } = useAuth()
-       const [report, setReport] = useState<any>(null)
-       const [reportData, setReportData] = useState<any>(null)
+       const [report, setReport] = useState<AIReport | null>(null)
+       const [reportData, setReportData] = useState<AIReportData | null>(null)
        const [loading, setLoading] = useState(true)
        const supabase = createClient()
 
@@ -70,7 +86,7 @@ export default function AIReportPage() {
                             const attendeeIds = attendees.map(a => a.id)
 
                             // Fetch all reports for these attendees
-                            const { data: reports, error } = await supabase
+                            const { data: reports } = await supabase
                                    .from("cdm_student_reports")
                                    .select("*")
                                    .in("attendee_id", attendeeIds)
@@ -83,8 +99,8 @@ export default function AIReportPage() {
                                    )
 
                                    if (aiReport) {
-                                          setReport(aiReport)
-                                          setReportData(aiReport.report_data || {})
+                                          setReport(aiReport as AIReport)
+                                          setReportData((aiReport.report_data || {}) as AIReportData)
                                    }
                             }
                      } catch (err) {
@@ -141,7 +157,7 @@ export default function AIReportPage() {
                                    <h3 className="text-lg font-bold text-[#1e232c] mb-6">Overall Assessment</h3>
                                    <div className="grid grid-cols-4 gap-4">
                                           {overallScores.length > 0 ? (
-                                                 overallScores.map((s: any, i: number) => {
+                                                 overallScores.map((s: { value: number; label: string; status?: string }, i: number) => {
                                                         const colors = getScoreColor(s.value)
                                                         return (
                                                                <div key={i} className="flex flex-col items-center">
@@ -178,8 +194,8 @@ export default function AIReportPage() {
                                    <h3 className="text-lg font-bold text-[#1e232c] mb-4">Skill Breakdown</h3>
                                    <div className="space-y-3">
                                           {skillBreakdown.length > 0 ? (
-                                                 skillBreakdown.map((skill: any, i: number) => {
-                                                        const scoreVal = parseInt(skill.score) || 0
+                                                 skillBreakdown.map((skill: { name: string; score: string | number; tag?: string }, i: number) => {
+                                                        const scoreVal = Number(skill.score) || 0
                                                         const colors = getScoreColor(scoreVal)
                                                         return (
                                                                <div key={i} className="flex items-center gap-4">
@@ -205,7 +221,7 @@ export default function AIReportPage() {
                                    <div className="space-y-6">
                                           <h2 className="text-xl font-bold text-[#1e232c]">Question by Question Analysis</h2>
 
-                                          {questions.map((q: any) => (
+                                          {questions.map((q: NonNullable<AIReportData["questions"]>[number]) => (
                                                  <Card key={q.number} className="rounded-2xl border-gray-100 shadow-sm overflow-hidden">
                                                         {/* Question Header */}
                                                         <div className="px-6 py-4 border-b border-gray-100">
@@ -272,7 +288,7 @@ export default function AIReportPage() {
                                    <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
                                           <h3 className="text-lg font-bold text-[#1e232c] mb-4">Final Recommendations</h3>
                                           <div className="space-y-4">
-                                                 {recommendations.map((rec: any, i: number) => (
+                                                 {recommendations.map((rec: NonNullable<AIReportData["recommendations"]>[number], i: number) => (
                                                         <div key={i} className="flex items-start gap-3">
                                                                <span className="text-lg">{rec.icon}</span>
                                                                <div>
@@ -295,3 +311,4 @@ export default function AIReportPage() {
               </div>
        )
 }
+

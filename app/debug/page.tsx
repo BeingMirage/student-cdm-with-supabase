@@ -4,24 +4,21 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 
 export default function DebugPage() {
-       const [envVars, setEnvVars] = useState<any>({})
+       const [envVars] = useState<Record<string, string | undefined>>({
+              NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+              NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?
+                     `${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.substring(0, 10)}...` : "(missing)",
+       })
        const [clientStatus, setClientStatus] = useState<string>("Initializing...")
 
        useEffect(() => {
-              // Check env vars
-              const vars = {
-                     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-                     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?
-                            `${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.substring(0, 10)}...` : "(missing)",
-              }
-              setEnvVars(vars)
-
               // Try initializing client
               try {
-                     const supabase = createClient()
+                     createClient()
+                     // eslint-disable-next-line react-hooks/set-state-in-effect
                      setClientStatus("Client initialized successfully")
-              } catch (err: any) {
-                     setClientStatus(`Client initialization failed: ${err.message}`)
+              } catch (err: unknown) {
+                     setClientStatus(`Client initialization failed: ${(err as Error).message}`)
               }
        }, [])
 

@@ -1,12 +1,12 @@
 "use client"
-import { ArrowRight, BookOpen, Briefcase, Building2, GraduationCap, LayoutPanelLeft, LineChart, Lock, Mail, MessageSquareText, Phone, Rocket, Sparkles, TrendingUp, Users } from "lucide-react"
+import { BookOpen, Briefcase, Building2, GraduationCap, LayoutPanelLeft, Lock, Mail, MessageSquareText, Phone, Rocket, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
 
 export default function DashboardPage() {
-       const { user, profile, isLoading } = useAuth()
+       const { profile, isLoading } = useAuth()
 
        // Get user's first name or default to "User"
        const firstName = profile?.full_name?.split(' ')[0] || "User"
@@ -90,7 +90,6 @@ export default function DashboardPage() {
                                    icon={<Users className="size-6" />}
                                    badges={["Diagnostic Interview", "Practice Interview", "Resume Review"]}
                                    color="bg-[#FFF5ED]"
-                                   iconColor="text-[#FF9E44]"
                             />
 
                             {/* Build Resume */}
@@ -147,7 +146,15 @@ export default function DashboardPage() {
        )
 }
 
-function ActionCard({ title, icon, badges, color, iconColor = "text-gray-400", locked }: any) {
+interface ActionCardProps {
+       title: string;
+       icon: React.ReactNode;
+       badges: string[];
+       color: string;
+       locked?: boolean;
+}
+
+function ActionCard({ title, icon, badges, color, locked }: ActionCardProps) {
        return (
               <Card className={`h-[253px] rounded-[24px] border-none shadow-sm ${color} p-6 relative flex flex-col justify-between group cursor-pointer hover:shadow-md transition-all`}>
                      <div className="absolute top-6 right-6 flex items-center gap-2">
@@ -174,96 +181,7 @@ function ActionCard({ title, icon, badges, color, iconColor = "text-gray-400", l
        )
 }
 
-function CourseCard({ title, instructor, level, duration, students, progress, buttonText }: any) {
-       return (
-              <Card className="rounded-[24px] border border-gray-100 shadow-sm p-6 space-y-6">
-                     <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                   <h3 className="font-bold text-lg text-[#1e232c] line-clamp-1">{title}</h3>
-                                   <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-3 py-1 rounded-full tracking-wider">{level}</span>
-                            </div>
-                            <p className="text-gray-400 text-sm">By {instructor}</p>
-                     </div>
 
-                     <div className="flex items-center gap-6 text-xs text-gray-400 font-medium">
-                            <span className="flex items-center gap-1.5"><ArrowRight className="size-3" /> {duration}</span>
-                            <span className="flex items-center gap-1.5"><Users className="size-3" /> {students}</span>
-                     </div>
 
-                     {progress && (
-                            <div className="space-y-2">
-                                   <div className="flex items-center justify-between text-xs font-bold">
-                                          <span className="text-gray-400">Progress</span>
-                                          <span className="text-black">{progress}%</span>
-                                   </div>
-                                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                          <div className="h-full bg-[#FF9E44]" style={{ width: `${progress}%` }} />
-                                   </div>
-                            </div>
-                     )}
-
-                     <Button className={`w-full py-6 rounded-xl font-bold ${buttonText === "Continue" ? "bg-black text-white" : "bg-white border-2 border-black text-black hover:bg-black hover:text-white"}`}>
-                            {buttonText}
-                     </Button>
-              </Card>
-       )
-}
-
-function ProjectCard({ title, company, duration, type, stack }: any) {
-       return (
-              <Card className="rounded-[24px] border border-gray-100 shadow-sm p-6 space-y-6">
-                     <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                   <h3 className="font-bold text-lg text-[#1e232c] line-clamp-1">{title}</h3>
-                                   <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-3 py-1 rounded-full tracking-wider">Intermediate</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                   <div className="size-5 bg-gray-100 rounded p-1" />
-                                   {company}
-                            </div>
-                     </div>
-
-                     <div className="flex items-center gap-4">
-                            <span className="text-xs font-semibold text-gray-400 bg-gray-50 px-3 py-1 rounded-lg border border-gray-100">{duration}</span>
-                            <span className="text-xs font-semibold text-blue-500 bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">{type}</span>
-                     </div>
-
-                     <div className="flex flex-wrap gap-2">
-                            {stack.map((s: string) => (
-                                   <span key={s} className="text-[10px] font-bold text-gray-500 bg-white border border-gray-100 px-3 py-1 rounded-full">
-                                          {s}
-                                   </span>
-                            ))}
-                     </div>
-
-                     <Button className="w-full py-6 rounded-xl font-bold bg-black text-white">
-                            View Project
-                     </Button>
-              </Card>
-       )
-}
-
-function UpdateCard({ category, title, time, tag, icon }: any) {
-       return (
-              <Card className="rounded-[24px] border border-gray-100 shadow-sm p-6 space-y-6">
-                     <div className="flex gap-6">
-                            <div className="text-3xl mt-1">{icon}</div>
-                            <div className="space-y-4 flex-1">
-                                   <div className="space-y-2">
-                                          <h4 className="font-bold text-[#1e232c] leading-tight">{category}</h4>
-                                          <p className="text-gray-400 text-sm line-clamp-2 md:line-clamp-none">{title}</p>
-                                   </div>
-                                   <div className="flex items-center justify-between">
-                                          <span className="text-xs font-medium text-gray-400">{time}</span>
-                                          <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase">{tag}</span>
-                                   </div>
-                            </div>
-                     </div>
-                     <Button className="w-full py-6 rounded-xl font-bold bg-black text-white">
-                            Read More
-                     </Button>
-              </Card>
-       )
-}
 
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { Calendar, Clock, Users, CheckCircle2, Star, X, Info, ExternalLink } from "lucide-react"
+import { Calendar, Clock, Users, CheckCircle2, Star, Info } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,16 @@ function getReportRoute(reportType: string): string {
        return '/profile'
 }
 
+type Report = {
+       report_type?: string
+       mentor_name?: string
+       average_rating?: string | number
+       overall_score?: string | number
+       improvement_areas?: string
+       strongest_aspects?: string
+       [key: string]: unknown
+}
+
 export default function MyJourneyPage() {
        const { profile, isLoading: authLoading } = useAuth()
        const [particulars, setParticulars] = useState<JourneyItem[]>([])
@@ -57,9 +67,8 @@ export default function MyJourneyPage() {
        const [selectedParticular, setSelectedParticular] = useState<JourneyItem | null>(null)
        const [selectedCategory, setSelectedCategory] = useState<string>('All')
        // All reports keyed by journey_item_id
-       const [reportsByJourneyItem, setReportsByJourneyItem] = useState<Record<string, any>>({})
+       const [reportsByJourneyItem, setReportsByJourneyItem] = useState<Record<string, Report>>({})
        const [isLoadingReports, setIsLoadingReports] = useState(false)
-       const supabase = createClient()
        const router = useRouter()
 
        useEffect(() => {
@@ -73,6 +82,7 @@ export default function MyJourneyPage() {
               const fetchJourneyItems = async () => {
                      setIsLoading(true)
                      try {
+                            const supabase = createClient()
                             const instName = profile.institute_name
                             if (!instName) {
                                    setIsLoading(false)
@@ -153,6 +163,7 @@ export default function MyJourneyPage() {
               const fetchAllReports = async () => {
                      setIsLoadingReports(true)
                      try {
+                            const supabase = createClient()
                             // Find session attendees for this student
                             const { data: attendees } = await supabase
                                    .from('cdm_session_attendees')
@@ -173,7 +184,7 @@ export default function MyJourneyPage() {
                                    .order('created_at', { ascending: false })
 
                             if (!error && reports) {
-                                   const reportsMap: Record<string, any> = {}
+                                   const reportsMap: Record<string, Report> = {}
                                    for (const r of reports) {
                                           const jiId = r.journey_item_id
                                           if (jiId && !reportsMap[jiId]) {
@@ -375,7 +386,7 @@ export default function MyJourneyPage() {
 
 // ─── Module Card ──────────────────────────────────────────────────────
 
-function ModuleCard({ item, report, onClick }: { item: JourneyItem; report?: any; onClick: () => void }) {
+function ModuleCard({ item, report, onClick }: { item: JourneyItem; report?: Report; onClick: () => void }) {
        const statusColor =
               item.status === 'Completed' ? 'text-green-600 bg-green-50' :
                      item.status === 'In Progress' ? 'text-blue-600 bg-blue-50' :
@@ -448,7 +459,7 @@ function SessionDetailsDialog({
        onOpenChange,
 }: {
        item: JourneyItem | null
-       report: any
+       report: Report | null
        isLoadingReport: boolean
        open: boolean
        onOpenChange: (open: boolean) => void
@@ -461,7 +472,6 @@ function SessionDetailsDialog({
               item.cdm_products?.cdm_modules?.category?.toLowerCase() === 'diagnostic'
 
        const startDate = formatDate(item.start_date)
-       const endDate = formatDate(item.end_date)
        const description = item.cdm_products?.cdm_modules?.description
        const moduleMode = item.cdm_products?.cdm_modules?.mode
 
@@ -592,7 +602,7 @@ function SessionDetailsDialog({
                                                                              <div className="space-y-2 pt-2 border-t border-gray-100">
                                                                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Feedback Summary</p>
                                                                                     <p className="text-sm text-gray-600 leading-relaxed italic">
-                                                                                           "{report.improvement_areas}"
+                                                                                           &quot;{report.improvement_areas}&quot;
                                                                                     </p>
                                                                              </div>
                                                                       )}
@@ -722,3 +732,4 @@ function computeOverallDates(items: JourneyItem[]): { start: string | null, end:
 
        return { start: fmt(min), end: fmt(max) }
 }
+

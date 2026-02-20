@@ -27,14 +27,14 @@ type ReportEntry = {
        tabLabel: string        // e.g. "Diagnostic Interview 1"
        reportType: string      // original report_type from DB
        journeyItemId: string | null
-       report: any             // full report data
+       report: Record<string, unknown> // full report data
 }
 
 // ─── Main Component ──────────────────────────────────────────────────
 
 export default function ProfilePage() {
        const [activeTab, setActiveTab] = useState<string>("Overview")
-       const { user, profile, isLoading: authLoading } = useAuth()
+       const { profile, isLoading: authLoading } = useAuth()
        const [reportEntries, setReportEntries] = useState<ReportEntry[]>([])
        const [isLoadingReport, setIsLoadingReport] = useState(false)
        const [particularsData, setParticularsData] = useState<Particular[]>([])
@@ -405,6 +405,7 @@ function formatDate(dateStr: string | null | undefined): string | null {
 
 // ─── Overview Tab ────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function OverviewTab({ diagnosticReport, reportEntries, particularsData }: { diagnosticReport: any; reportEntries: ReportEntry[]; particularsData: Particular[] }) {
        const hasDiagnostic = !!diagnosticReport
        const avgRating = diagnosticReport?.average_rating
@@ -585,16 +586,17 @@ function DynamicReportTab({ entry, isLoading, particular }: { entry: ReportEntry
 
 // ─── Diagnostic Interview Tab ────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function DiagnosticInterviewTab({ report, isLoading, particular }: { report: any; isLoading: boolean; particular?: Particular }) {
        if (isLoading) return <div className="p-8 text-center text-gray-500">Loading diagnostic report...</div>
        if (!report) return <div className="p-8 text-center text-gray-500">No diagnostic report available.</div>
 
        // Build chart data from report_data.sections[]
-       const sections: { title: string; rating: number; items: any[] }[] = report.sections || []
+       const sections: { title: string; rating: number; items: unknown[] }[] = report.sections || []
 
        const chartData = sections
-              .filter((s: any) => s.rating > 0)
-              .map((s: any) => ({
+              .filter((s: { title: string; rating: number; groups?: { items?: unknown[] }[]; score?: string | number; value?: number; status?: string; label?: string; name?: string }) => s.rating > 0)
+              .map((s: { title: string; rating: number; groups?: { items?: unknown[] }[]; score?: string | number; value?: number; status?: string; label?: string; name?: string }) => ({
                      label: s.title,
                      value: Math.round((s.rating / 5) * 100),
               }))
@@ -761,6 +763,7 @@ function GenericReportTab({ title, particular, reportLink }: { title: string; pa
 
 // ─── Resume Review Tab ────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function ResumeReviewTab({ report, isLoading, particular }: { report: any; isLoading: boolean; particular?: Particular }) {
        if (isLoading) return <div className="p-8 text-center text-gray-500">Loading resume review report...</div>
        if (!report) return <GenericReportTab title="Resume Review" particular={particular} reportLink="/profile/resume-report" />
@@ -768,8 +771,8 @@ function ResumeReviewTab({ report, isLoading, particular }: { report: any; isLoa
        const rd = report.report_data || {}
        const meta = rd.meta || {}
        const sections = rd.sections || []
-       const totalComments = sections.reduce((acc: number, s: any) =>
-              acc + ((s.groups || []).reduce((g: number, gr: any) => g + (gr.items?.length || 0), 0)), 0)
+       const totalComments = sections.reduce((acc: number, s: { groups?: { items?: unknown[] }[] }) =>
+              acc + ((s.groups || []).reduce((g: number, gr: { items?: unknown[] }) => g + (gr.items?.length || 0), 0)), 0)
 
        return (
               <div className="space-y-6">
@@ -815,11 +818,11 @@ function ResumeReviewTab({ report, isLoading, particular }: { report: any; isLoa
                             <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
                                    <h3 className="font-bold text-[#1e232c] mb-4">Review Sections</h3>
                                    <div className="space-y-3">
-                                          {sections.map((s: any, i: number) => (
+                                          {sections.map((s: { title: string; rating: number; groups?: { items?: unknown[] }[]; score?: string | number; value?: number; status?: string; label?: string; name?: string }, i: number) => (
                                                  <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                                                         <span className="text-sm text-gray-700">{s.title}</span>
                                                         <span className="text-xs text-gray-400">
-                                                               {(s.groups || []).reduce((acc: number, g: any) => acc + (g.items?.length || 0), 0)} comments
+                                                               {(s.groups || []).reduce((acc: number, g: { items?: unknown[] }) => acc + (g.items?.length || 0), 0)} comments
                                                         </span>
                                                  </div>
                                           ))}
@@ -832,6 +835,7 @@ function ResumeReviewTab({ report, isLoading, particular }: { report: any; isLoa
 
 // ─── Practice Interview Tab ──────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function PracticeInterviewTab({ report, isLoading, particular }: { report: any; isLoading: boolean; particular?: Particular }) {
        if (isLoading) return <div className="p-8 text-center text-gray-500">Loading practice interview report...</div>
        if (!report) return <GenericReportTab title="Practice Interview" particular={particular} reportLink="/profile/practice-report" />
@@ -881,7 +885,7 @@ function PracticeInterviewTab({ report, isLoading, particular }: { report: any; 
                             <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
                                    <h3 className="font-bold text-[#1e232c] mb-4">Skill Breakdown</h3>
                                    <div className="grid grid-cols-2 gap-3">
-                                          {skillBreakdown.map((skill: any, i: number) => (
+                                          {skillBreakdown.map((skill: { name: string; score?: string | number; rating?: number }, i: number) => (
                                                  <div key={i} className="flex items-center justify-between">
                                                         <span className="text-sm text-gray-700">{skill.name}</span>
                                                         <div className="flex items-center gap-0.5">
@@ -912,6 +916,7 @@ function PracticeInterviewTab({ report, isLoading, particular }: { report: any; 
 
 // ─── AI Interview Tab ────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AIInterviewTab({ report, isLoading, particular }: { report: any; isLoading: boolean; particular?: Particular }) {
        if (isLoading) return <div className="p-8 text-center text-gray-500">Loading AI interview report...</div>
        if (!report) return <GenericReportTab title="AI Interview" particular={particular} reportLink="/profile/ai-report" />
@@ -942,7 +947,7 @@ function AIInterviewTab({ report, isLoading, particular }: { report: any; isLoad
 
                      {overallScores.length > 0 && (
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                   {overallScores.map((s: any, i: number) => {
+                                   {overallScores.map((s: { title: string; rating: number; groups?: { items?: unknown[] }[]; score?: string | number; value?: number; status?: string; label?: string; name?: string }, i: number) => {
                                           const color = s.value >= 80 ? 'text-green-600 bg-green-50' : s.value >= 60 ? 'text-blue-600 bg-blue-50' : 'text-red-500 bg-red-50'
                                           return (
                                                  <Card key={i} className="p-4 rounded-2xl border-gray-100 shadow-sm text-center">
@@ -961,8 +966,8 @@ function AIInterviewTab({ report, isLoading, particular }: { report: any; isLoad
                             <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
                                    <h3 className="font-bold text-[#1e232c] mb-4">Skill Breakdown</h3>
                                    <div className="space-y-3">
-                                          {skillBreakdown.map((skill: any, i: number) => {
-                                                 const scoreVal = parseInt(skill.score) || 0
+                                          {skillBreakdown.map((skill: { name: string; score?: string | number; rating?: number }, i: number) => {
+                                                 const scoreVal = Number(skill.score) || 0
                                                  return (
                                                         <div key={i} className="flex items-center gap-4">
                                                                <span className="text-sm text-gray-700 w-40 shrink-0">{skill.name}</span>
@@ -990,3 +995,6 @@ function AIInterviewTab({ report, isLoading, particular }: { report: any; isLoad
               </div>
        )
 }
+
+
+

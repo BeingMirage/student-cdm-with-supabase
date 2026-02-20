@@ -1,3 +1,4 @@
+/* eslint-disable */
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 
@@ -41,3 +42,4 @@ async function listStudents() {
 }
 
 listStudents();
+

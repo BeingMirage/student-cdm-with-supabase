@@ -47,7 +47,7 @@ type ReportData = {
 
 export default function DiagnosticReportPage() {
        const { user, profile } = useAuth()
-       const [report, setReport] = useState<any>(null)
+       const [report, setReport] = useState<Record<string, unknown> | null>(null)
        const [reportData, setReportData] = useState<ReportData | null>(null)
        const [loading, setLoading] = useState(true)
        const supabase = createClient()
