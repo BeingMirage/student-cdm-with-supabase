@@ -428,8 +428,8 @@ function OverviewTab({ diagnosticReport, reportEntries, particularsData }: { dia
               return {
                      label: entry.tabLabel,
                      link,
-                     rating: report?.average_rating ?? report?.report_data?.meta?.overall_rating ?? null,
-                     score: report?.report_data?.meta?.overall_score ?? null,
+                     rating: report?.average_rating ?? (report?.report_data as Record<string, any>)?.meta?.overall_rating ?? null,
+                     score: (report?.report_data as Record<string, any>)?.meta?.overall_score ?? null,
                      hasReport: true,
               }
        })
@@ -947,14 +947,16 @@ function AIInterviewTab({ report, isLoading, particular }: { report: any; isLoad
 
                      {overallScores.length > 0 && (
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                   {overallScores.map((s: { title: string; rating: number; groups?: { items?: unknown[] }[]; score?: string | number; value?: number; status?: string; label?: string; name?: string }, i: number) => {
-                                          const color = s.value >= 80 ? 'text-green-600 bg-green-50' : s.value >= 60 ? 'text-blue-600 bg-blue-50' : 'text-red-500 bg-red-50'
+                                   {overallScores.map((s: { title?: string; rating?: number; groups?: { items?: unknown[] }[]; score?: string | number; value?: number; status?: string; label?: string; name?: string }, i: number) => {
+                                          const value = s.value ?? 0
+                                          const label = s.label ?? 'Score'
+                                          const color = value >= 80 ? 'text-green-600 bg-green-50' : value >= 60 ? 'text-blue-600 bg-blue-50' : 'text-red-500 bg-red-50'
                                           return (
                                                  <Card key={i} className="p-4 rounded-2xl border-gray-100 shadow-sm text-center">
-                                                        <p className="text-xs text-gray-400 mb-1">{s.label}</p>
-                                                        <p className={`text-2xl font-bold ${color.split(' ')[0]}`}>{s.value}%</p>
+                                                        <p className="text-xs text-gray-400 mb-1">{label}</p>
+                                                        <p className={`text-2xl font-bold ${color.split(' ')[0]}`}>{value}%</p>
                                                         <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${color}`}>
-                                                               {s.status || (s.value >= 80 ? 'Great' : s.value >= 60 ? 'Good' : 'Needs Work')}
+                                                               {s.status || (value >= 80 ? 'Great' : value >= 60 ? 'Good' : 'Needs Work')}
                                                         </span>
                                                  </Card>
                                           )

@@ -262,7 +262,7 @@ export function InterviewTranscript({
 }: {
        messages?: { speaker: string; color: "red" | "orange"; text: string }[]
        duration?: string
-       length?: string
+       length?: string | number
 }) {
        const displayDuration = duration || "N/A"
        const displayLength = length || "N/A"

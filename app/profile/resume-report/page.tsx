@@ -85,9 +85,10 @@ export default function ResumeReportPage() {
               )
        }
 
-       const meta = reportData.meta || {}
-       const sections: { title: string; rating: number; comments?: string }[] = reportData.sections || []
-       const feedback = reportData.feedback_summary || {}
+       const data = reportData as Record<string, any>
+       const meta = data.meta || {}
+       const sections: { title: string; rating: number; comments?: string }[] = Array.isArray(data.sections) ? data.sections : []
+       const feedback = data.feedback_summary || {}
        const overallRating = meta.overall_rating || 0
 
        // Build feedback entries from feedback_summary

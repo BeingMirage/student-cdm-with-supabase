@@ -51,7 +51,7 @@ type AIReportData = {
        questions?: Array<{ number: number; category: string; score: number | string; question: string; feedback: string; strengths?: string[]; improvements?: string[]; suggestedResponse?: string }>;
        recommendations?: Array<{ icon: string; title: string; text: string }>;
        alert_message?: string;
-       transcript?: { messages: Record<string, unknown>[]; duration: string; length: number };
+       transcript?: { messages: { speaker: string; color: "red" | "orange"; text: string }[]; duration: string; length: number | string };
 };
 
 type AIReport = {
