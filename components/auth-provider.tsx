@@ -37,32 +37,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
        useEffect(() => {
               let isCancelled = false
 
-              // Initial session check on mount / page reload
-              const initializeAuth = async () => {
-                     try {
-                            const { data: { session } } = await supabase.auth.getSession()
-                            if (isCancelled) return
-
-                            if (session?.user) {
-                                   setSession(session)
-                                   setUser(session.user)
-                                   await fetchProfile(session.user.email!)
-                            }
-                     } catch (error) {
-                            console.error('Error fetching session:', error)
-                     } finally {
-                            if (!isCancelled) setIsLoading(false)
-                     }
-              }
-
-              initializeAuth()
-
-              // Listen for explicit auth changes (not INITIAL_SESSION to avoid double-fetch)
+              // onAuthStateChange fires INITIAL_SESSION on every page load/refresh
+              // with the current session from cookies — this is the correct way to
+              // initialize auth state in Next.js with @supabase/ssr
               const { data: { subscription } } = supabase.auth.onAuthStateChange(
                      async (event: string, session: Session | null) => {
                             if (isCancelled) return
 
-                            if (event === 'SIGNED_IN') {
+                            if (event === 'INITIAL_SESSION') {
+                                   // Fires once on mount with the current session from cookies
+                                   if (session?.user) {
+                                          setSession(session)
+                                          setUser(session.user)
+                                          await fetchProfile(session.user.email!)
+                                   }
+                                   if (!isCancelled) setIsLoading(false)
+                            } else if (event === 'SIGNED_IN') {
                                    setSession(session)
                                    setUser(session?.user ?? null)
                                    if (session?.user) {
@@ -86,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                      isCancelled = true
                      subscription.unsubscribe()
               }
-       // eslint-disable-next-line react-hooks/exhaustive-deps
+              // eslint-disable-next-line react-hooks/exhaustive-deps
        }, [])
 
        const fetchProfile = async (userEmail: string) => {
