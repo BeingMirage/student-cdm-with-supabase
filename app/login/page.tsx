@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +15,7 @@ export default function LoginPage() {
        const [error, setError] = useState<string | null>(null)
        const [showPassword, setShowPassword] = useState(false)
        const supabase = createClient()
+       const router = useRouter()
 
        const handleLogin = async (e: React.FormEvent) => {
               e.preventDefault()
@@ -42,22 +44,12 @@ export default function LoginPage() {
                             return
                      }
 
-                     // Wait until the session is fully persisted and retrievable
-                     // This prevents the race condition where navigation happens before
-                     // cookies/storage are written, causing infinite loading on dashboard
-                     let retries = 0
-                     while (retries < 15) {
-                            await new Promise(resolve => setTimeout(resolve, 200))
-                            const { data: check } = await supabase.auth.getSession()
-                            if (check.session) break
-                            retries++
-                     }
-
-                     // Full page navigation to ensure auth cookies are sent with the request
-                     window.location.href = '/dashboard'
-              } catch (err) {
+                     // The AuthProvider will automatically pick up the SIGNED_IN event
+                     // and fetch the profile. We just need to navigate to the dashboard.
+                     router.push('/dashboard')
+              } catch (err: any) {
                      console.error("Login error:", err)
-                     setError("An unexpected error occurred")
+                     setError(err?.message || "An unexpected error occurred")
                      setIsLoading(false)
               }
        }
