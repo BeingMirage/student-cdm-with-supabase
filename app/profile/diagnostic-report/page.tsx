@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -51,13 +52,31 @@ export default function DiagnosticReportPage() {
        const [reportData, setReportData] = useState<ReportData | null>(null)
        const [loading, setLoading] = useState(true)
        const supabase = createClient()
+       const searchParams = useSearchParams()
+       const reportId = searchParams.get('id')
 
        useEffect(() => {
               const fetchReport = async () => {
                      if (!profile) return
                      setLoading(true)
 
-                     // Find session attendees for this student
+                     // If a specific report ID is provided, fetch by ID directly
+                     if (reportId) {
+                            const { data, error } = await supabase
+                                   .from("cdm_student_reports")
+                                   .select("*")
+                                   .eq("id", reportId)
+                                   .maybeSingle()
+
+                            if (!error && data) {
+                                   setReport(data)
+                                   setReportData(data.report_data as ReportData)
+                            }
+                            setLoading(false)
+                            return
+                     }
+
+                     // Fallback: find by type (legacy behavior)
                      const { data: attendees } = await supabase
                             .from('cdm_session_attendees')
                             .select('id')

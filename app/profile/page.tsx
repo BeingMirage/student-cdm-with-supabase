@@ -24,9 +24,10 @@ type Particular = {
 
 // Each report stored individually with a generated tab label
 type ReportEntry = {
-       tabLabel: string        // e.g. "Diagnostic Interview 1"
+       tabLabel: string        // e.g. "Diagnostic Interview — 15 Jan 2025"
        reportType: string      // original report_type from DB
        journeyItemId: string | null
+       reportId: string | null // id from cdm_student_reports used for View Full Report links
        report: any             // full report data
 }
 
@@ -134,13 +135,15 @@ export default function ProfilePage() {
                                           countByType[type] = (countByType[type] || 0) + 1
                                           const num = countByType[type]
 
-                                          const rd = data.report_data || {}
+                                          const rd = data.report_data || {}; const _md = rd.meta?.date; let _dl = ''; if (_md) { try { _dl = new Date(_md).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { _dl = _md } }; const _tl = _dl ? `${type} \u2014 ${_dl}` : `${type} ${num}`
                                           entries.push({
-                                                 tabLabel: `${type} ${num}`,
+                                                 tabLabel: _tl,
                                                  reportType: type,
                                                  journeyItemId: data.journey_item_id,
+                                                 reportId: data.id || null,
                                                  report: {
                                                         ...data,
+                                                        report_data: rd,
                                                         mentor_name: rd.meta?.mentor_name,
                                                         average_rating: rd.meta?.overall_rating,
                                                         overall_score: rd.meta?.overall_score,
@@ -565,18 +568,19 @@ function OverviewTab({ diagnosticReport, reportEntries, particularsData }: { dia
 
 function DynamicReportTab({ entry, isLoading, particular }: { entry: ReportEntry; isLoading: boolean; particular?: Particular }) {
        const type = entry.reportType.toLowerCase()
+       const reportId = entry.reportId
 
        if (type.includes('diagnostic')) {
-              return <DiagnosticInterviewTab report={entry.report} isLoading={isLoading} particular={particular} />
+              return <DiagnosticInterviewTab report={entry.report} isLoading={isLoading} particular={particular} reportId={reportId} />
        }
        if (type.includes('resume')) {
-              return <ResumeReviewTab report={entry.report} isLoading={isLoading} particular={particular} />
+              return <ResumeReviewTab report={entry.report} isLoading={isLoading} particular={particular} reportId={reportId} />
        }
        if (type.includes('practice')) {
-              return <PracticeInterviewTab report={entry.report} isLoading={isLoading} particular={particular} />
+              return <PracticeInterviewTab report={entry.report} isLoading={isLoading} particular={particular} reportId={reportId} />
        }
        if (type.includes('ai')) {
-              return <AIInterviewTab report={entry.report} isLoading={isLoading} particular={particular} />
+              return <AIInterviewTab report={entry.report} isLoading={isLoading} particular={particular} reportId={reportId} />
        }
 
        // Fallback for unknown report types
@@ -585,10 +589,13 @@ function DynamicReportTab({ entry, isLoading, particular }: { entry: ReportEntry
 
 // ─── Diagnostic Interview Tab ────────────────────────────────────────
 
-function DiagnosticInterviewTab({ report, isLoading, particular }: { report: any; isLoading: boolean; particular?: Particular }) {
+function DiagnosticInterviewTab({ report, isLoading, particular, reportId }: { report: any; isLoading: boolean; particular?: Particular; reportId?: string | null }) {
        if (isLoading) return <div className="p-8 text-center text-gray-500">Loading diagnostic report...</div>
        if (!report) return <div className="p-8 text-center text-gray-500">No diagnostic report available.</div>
 
+       const rd = report.report_data || {}
+       const meta = rd.meta || {}
+       const feedback = rd.feedback_summary || {}
        // Build chart data from report_data.sections[]
        const sections: { title: string; rating: number; items: any[] }[] = report.sections || []
 
@@ -599,12 +606,14 @@ function DiagnosticInterviewTab({ report, isLoading, particular }: { report: any
                      value: Math.round((s.rating / 5) * 100),
               }))
 
-       // Determine date to show
-       const completedDate = particular?.end_date
-              ? formatDate(particular.end_date)
-              : report.created_at
-                     ? new Date(report.created_at).toLocaleDateString()
-                     : null
+       // Use meta.date first, fall back to particular dates
+       const reportDate = meta.date
+              ? formatDate(meta.date)
+              : particular?.end_date
+                     ? formatDate(particular.end_date)
+                     : report.created_at
+                            ? new Date(report.created_at).toLocaleDateString()
+                            : null
 
        return (
               <div className="space-y-6">
@@ -612,22 +621,48 @@ function DiagnosticInterviewTab({ report, isLoading, particular }: { report: any
                      <div className="flex items-center justify-between">
                             <div>
                                    <h2 className="text-xl font-bold text-[#1e232c]">Diagnostic Interview</h2>
-                                   {completedDate && (
+                                   {reportDate && (
                                           <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-1">
-                                                 <Calendar className="size-3.5" /> Completed on {completedDate}
+                                                 <Calendar className="size-3.5" /> {reportDate}
                                           </p>
                                    )}
-                                   {particular?.start_date && (
-                                          <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-0.5">
-                                                 <Clock className="size-3.5" /> Started {formatDate(particular.start_date)}
-                                          </p>
+                                   {meta.report_version && (
+                                          <span className="inline-block mt-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500 uppercase">
+                                                 {meta.report_version}
+                                          </span>
                                    )}
                             </div>
-                            <Link href="/profile/diagnostic-report">
+                            <Link href={`/profile/diagnostic-report${reportId ? `?id=${reportId}` : ''}`}>
                                    <Button variant="outline" className="rounded-lg gap-2 text-sm border-gray-200">
                                           <ExternalLink className="size-4" /> View Full Report
                                    </Button>
                             </Link>
+                     </div>
+
+                     {/* Meta Info Row */}
+                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {meta.overall_rating != null && (
+                                   <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
+                                          <p className="text-xs text-gray-400 mb-2">Overall Rating</p>
+                                          <div className="flex items-center justify-center gap-2">
+                                                 <Star className="size-5 text-[#FF9E44] fill-[#FF9E44]" />
+                                                 <span className="text-3xl font-bold text-[#1e232c]">{Number(meta.overall_rating).toFixed(1)}</span>
+                                          </div>
+                                          <p className="text-[10px] text-gray-400 mt-1">out of 5.0</p>
+                                   </Card>
+                            )}
+                            {meta.alignment_score != null && (
+                                   <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
+                                          <p className="text-xs text-gray-400 mb-2">Alignment Score</p>
+                                          <p className="text-3xl font-bold text-[#1e232c]">{meta.alignment_score}<span className="text-lg font-normal text-gray-400"> / 5</span></p>
+                                   </Card>
+                            )}
+                            {meta.mentor_name && (
+                                   <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
+                                          <p className="text-xs text-gray-400 mb-2">Mentor</p>
+                                          <p className="text-lg font-bold text-[#1e232c]">{meta.mentor_name}</p>
+                                   </Card>
+                            )}
                      </div>
 
                      {/* Parameter-wise rating - only if scores exist */}
@@ -656,6 +691,34 @@ function DiagnosticInterviewTab({ report, isLoading, particular }: { report: any
                                                         <p className="text-sm text-gray-600">{report.improvement_areas}</p>
                                                  </div>
                                           </div>
+                                   )}
+                            </div>
+                     )}
+
+                     {/* Recommended Actions */}
+                     {feedback.recommended_actions_4_to_6_weeks && (
+                            <div>
+                                   <SectionLabel className="bg-blue-100 text-blue-700 mb-3">Recommended Actions (4–6 weeks)</SectionLabel>
+                                   <Card className="p-5 rounded-2xl border-gray-100 shadow-sm mt-2">
+                                          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{feedback.recommended_actions_4_to_6_weeks}</p>
+                                   </Card>
+                            </div>
+                     )}
+
+                     {/* Focus & Clarity scores */}
+                     {(feedback.focused_and_final || feedback.clarity_change_since_di1) && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                   {feedback.focused_and_final && (
+                                          <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
+                                                 <p className="text-xs text-gray-400 mb-2">Focus & Finality Score</p>
+                                                 <p className="text-3xl font-bold text-[#FF9E44]">{feedback.focused_and_final}<span className="text-lg font-normal text-gray-400"> / 5</span></p>
+                                          </Card>
+                                   )}
+                                   {feedback.clarity_change_since_di1 && (
+                                          <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
+                                                 <p className="text-xs text-gray-400 mb-2">Clarity Change Since DI-1</p>
+                                                 <p className="text-3xl font-bold text-[#1e232c]">{feedback.clarity_change_since_di1}<span className="text-lg font-normal text-gray-400"> / 5</span></p>
+                                          </Card>
                                    )}
                             </div>
                      )}
@@ -761,70 +824,113 @@ function GenericReportTab({ title, particular, reportLink }: { title: string; pa
 
 // ─── Resume Review Tab ────────────────────────────────────────────────
 
-function ResumeReviewTab({ report, isLoading, particular }: { report: any; isLoading: boolean; particular?: Particular }) {
+function ResumeReviewTab({ report, isLoading, particular, reportId }: { report: any; isLoading: boolean; particular?: Particular; reportId?: string | null }) {
        if (isLoading) return <div className="p-8 text-center text-gray-500">Loading resume review report...</div>
        if (!report) return <GenericReportTab title="Resume Review" particular={particular} reportLink="/profile/resume-report" />
 
        const rd = report.report_data || {}
        const meta = rd.meta || {}
-       const sections = rd.sections || []
-       const totalComments = sections.reduce((acc: number, s: any) =>
-              acc + ((s.groups || []).reduce((g: number, gr: any) => g + (gr.items?.length || 0), 0)), 0)
+       const sections: { title: string; rating: number; comments?: string }[] = rd.sections || []
+       const feedback = rd.feedback_summary || {}
+       const overallRating = meta.overall_rating
+       const sectionsWithComments = sections.filter(s => s.comments)
+
+       // Build feedback entries
+       const feedbackEntries = [
+              { label: "Strengths", value: feedback.strengths, color: "bg-green-100 text-green-700" },
+              { label: "Areas for Improvement", value: feedback.areas_for_improvement, color: "bg-red-100 text-red-600" },
+              { label: "Resume Alignment", value: feedback.resume_alignment, color: "bg-blue-100 text-blue-700" },
+              { label: "Specific Recommendations", value: feedback.specific_recommendations, color: "bg-orange-100 text-orange-600" },
+              { label: "Next Steps", value: feedback.next_steps, color: "bg-purple-100 text-purple-700" },
+              { label: "Certifications / Tools / Courses", value: feedback.certifications_tools_courses, color: "bg-gray-100 text-gray-600" },
+       ].filter(e => e.value)
 
        return (
               <div className="space-y-6">
+                     {/* Header */}
                      <div className="flex items-center justify-between">
                             <div>
                                    <h2 className="text-xl font-bold text-[#1e232c]">Resume Review</h2>
                                    {meta.date && (
                                           <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-1">
-                                                 <Calendar className="size-3.5" /> Reviewed on {meta.date}
+                                                 <Calendar className="size-3.5" /> Reviewed on {formatDate(meta.date) || meta.date}
                                           </p>
                                    )}
+                                   {meta.report_version && (
+                                          <span className="inline-block mt-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500 uppercase">
+                                                 {meta.report_version}
+                                          </span>
+                                   )}
                             </div>
-                            <Link href="/profile/resume-report">
+                            <Link href={`/profile/resume-report${reportId ? `?id=${reportId}` : ''}`}>
                                    <Button variant="outline" className="rounded-lg gap-2 text-sm border-gray-200">
                                           <ExternalLink className="size-4" /> View Full Report
                                    </Button>
                             </Link>
                      </div>
 
-                     {meta.mentor_name && (
-                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
-                                   <h3 className="font-bold text-[#1e232c] mb-3">Reviewer</h3>
-                                   <p className="text-sm text-gray-600">Reviewed by <strong>{meta.mentor_name}</strong></p>
-                            </Card>
-                     )}
-
+                     {/* Meta Info Row */}
                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                            {overallRating != null && (
+                                   <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
+                                          <p className="text-xs text-gray-400 mb-2">Overall Rating</p>
+                                          <div className="flex items-center justify-center gap-2">
+                                                 <Star className="size-5 text-[#FF9E44] fill-[#FF9E44]" />
+                                                 <span className="text-3xl font-bold text-[#1e232c]">{Number(overallRating).toFixed(1)}</span>
+                                          </div>
+                                          <p className="text-[10px] text-gray-400 mt-1">out of 5.0</p>
+                                   </Card>
+                            )}
+                            {meta.mentor_name && (
+                                   <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
+                                          <p className="text-xs text-gray-400 mb-2">Reviewer</p>
+                                          <p className="text-lg font-bold text-[#1e232c]">{meta.mentor_name}</p>
+                                   </Card>
+                            )}
+                            <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
                                    <p className="text-xs text-gray-400 mb-2">Sections Reviewed</p>
                                    <p className="text-3xl font-bold text-[#1e232c]">{sections.length}</p>
                             </Card>
-                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
-                                   <p className="text-xs text-gray-400 mb-2">Total Comments</p>
-                                   <p className="text-3xl font-bold text-[#1e232c]">{totalComments}</p>
-                            </Card>
-                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
-                                   <p className="text-xs text-gray-400 mb-2">Report Status</p>
-                                   <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full">Available</span>
-                            </Card>
                      </div>
 
+                     {/* Section-wise Ratings with Comments */}
                      {sections.length > 0 && (
                             <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
-                                   <h3 className="font-bold text-[#1e232c] mb-4">Review Sections</h3>
-                                   <div className="space-y-3">
-                                          {sections.map((s: any, i: number) => (
-                                                 <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                                                        <span className="text-sm text-gray-700">{s.title}</span>
-                                                        <span className="text-xs text-gray-400">
-                                                               {(s.groups || []).reduce((acc: number, g: any) => acc + (g.items?.length || 0), 0)} comments
-                                                        </span>
+                                   <h3 className="font-bold text-[#1e232c] mb-4">Section-wise Evaluation</h3>
+                                   <div className="space-y-4">
+                                          {sections.map((s, i) => (
+                                                 <div key={i} className="border border-gray-50 rounded-xl p-4">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                               <span className="text-sm font-semibold text-[#1e232c]">{s.title}</span>
+                                                               <div className="flex items-center gap-1">
+                                                                      {Array.from({ length: 5 }, (_, si) => (
+                                                                             <Star key={si} className={`size-3.5 ${si < s.rating ? "text-[#FF9E44] fill-[#FF9E44]" : "text-gray-200 fill-gray-200"}`} />
+                                                                      ))}
+                                                                      <span className="text-xs font-bold text-gray-500 ml-1">{s.rating}/5</span>
+                                                               </div>
+                                                        </div>
+                                                        {s.comments && (
+                                                               <p className="text-sm text-gray-600 leading-relaxed mt-1 whitespace-pre-line">{s.comments}</p>
+                                                        )}
                                                  </div>
                                           ))}
                                    </div>
                             </Card>
+                     )}
+
+                     {/* Feedback Summary */}
+                     {feedbackEntries.length > 0 && (
+                            <div className="space-y-4">
+                                   <h3 className="font-bold text-[#1e232c]">Mentor Feedback</h3>
+                                   {feedbackEntries.map((entry, i) => (
+                                          <div key={i}>
+                                                 <SectionLabel className={`${entry.color} mb-2`}>{entry.label}</SectionLabel>
+                                                 <Card className="p-5 rounded-2xl border-gray-100 shadow-sm mt-1">
+                                                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{entry.value}</p>
+                                                 </Card>
+                                          </div>
+                                   ))}
+                            </div>
                      )}
               </div>
        )
@@ -832,62 +938,88 @@ function ResumeReviewTab({ report, isLoading, particular }: { report: any; isLoa
 
 // ─── Practice Interview Tab ──────────────────────────────────────────
 
-function PracticeInterviewTab({ report, isLoading, particular }: { report: any; isLoading: boolean; particular?: Particular }) {
+function PracticeInterviewTab({ report, isLoading, particular, reportId }: { report: any; isLoading: boolean; particular?: Particular; reportId?: string | null }) {
        if (isLoading) return <div className="p-8 text-center text-gray-500">Loading practice interview report...</div>
        if (!report) return <GenericReportTab title="Practice Interview" particular={particular} reportLink="/profile/practice-report" />
 
        const rd = report.report_data || {}
        const meta = rd.meta || {}
-       const overallScore = meta.overall_score || 'N/A'
-       const skillBreakdown = rd.skill_breakdown || []
-       const keyRemarks = rd.key_remarks
+       const sections: { title: string; rating: number }[] = rd.sections || []
+       const feedback = rd.feedback_summary || {}
+       const overallRating = meta.overall_rating
+
+       // Build feedback entries from the actual feedback_summary keys
+       const feedbackEntries = [
+              { label: "Overall Impression", value: feedback.overall_impression, color: "bg-blue-100 text-blue-700" },
+              { label: "Strengths", value: feedback.strengths, color: "bg-green-100 text-green-700" },
+              { label: "Additional Strengths", value: feedback.additional_strengths, color: "bg-green-100 text-green-700" },
+              { label: "Areas for Improvement", value: feedback.areas_for_improvement, color: "bg-red-100 text-red-600" },
+              { label: "Career Goals Articulation", value: feedback.career_goals_articulation, color: "bg-purple-100 text-purple-700" },
+              { label: "Red Flags", value: feedback.red_flags, color: "bg-red-100 text-red-600" },
+              { label: "Red Flag Remarks", value: feedback.red_flag_remarks, color: "bg-red-100 text-red-600" },
+       ].filter(e => e.value)
 
        return (
               <div className="space-y-6">
+                     {/* Header */}
                      <div className="flex items-center justify-between">
                             <div>
                                    <h2 className="text-xl font-bold text-[#1e232c]">Practice Interview</h2>
                                    {meta.date && (
                                           <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-1">
-                                                 <Calendar className="size-3.5" /> Completed on {meta.date}
+                                                 <Calendar className="size-3.5" /> Completed on {formatDate(meta.date) || meta.date}
                                           </p>
                                    )}
+                                   {meta.report_version && (
+                                          <span className="inline-block mt-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500 uppercase">
+                                                 {meta.report_version}
+                                          </span>
+                                   )}
                             </div>
-                            <Link href="/profile/practice-report">
+                            <Link href={`/profile/practice-report${reportId ? `?id=${reportId}` : ''}`}>
                                    <Button variant="outline" className="rounded-lg gap-2 text-sm border-gray-200">
                                           <ExternalLink className="size-4" /> View Full Report
                                    </Button>
                             </Link>
                      </div>
 
+                     {/* Meta Info Row */}
                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
-                                   <p className="text-xs text-gray-400 mb-2">Overall Score</p>
-                                   <p className="text-3xl font-bold text-[#FF9E44]">{overallScore}</p>
-                            </Card>
+                            {overallRating != null && (
+                                   <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
+                                          <p className="text-xs text-gray-400 mb-2">Overall Rating</p>
+                                          <div className="flex items-center justify-center gap-2">
+                                                 <Star className="size-5 text-[#FF9E44] fill-[#FF9E44]" />
+                                                 <span className="text-3xl font-bold text-[#1e232c]">{Number(overallRating).toFixed(1)}</span>
+                                          </div>
+                                          <p className="text-[10px] text-gray-400 mt-1">out of 5.0</p>
+                                   </Card>
+                            )}
                             {meta.mentor_name && (
-                                   <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                                   <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
                                           <p className="text-xs text-gray-400 mb-2">Interviewer</p>
                                           <p className="text-lg font-bold text-[#1e232c]">{meta.mentor_name}</p>
                                    </Card>
                             )}
-                            <Card className="p-6 rounded-2xl border-gray-100 shadow-sm text-center">
+                            <Card className="p-5 rounded-2xl border-gray-100 shadow-sm text-center">
                                    <p className="text-xs text-gray-400 mb-2">Skills Assessed</p>
-                                   <p className="text-3xl font-bold text-[#1e232c]">{skillBreakdown.length}</p>
+                                   <p className="text-3xl font-bold text-[#1e232c]">{sections.length}</p>
                             </Card>
                      </div>
 
-                     {skillBreakdown.length > 0 && (
+                     {/* Skill-wise Ratings from sections[] */}
+                     {sections.length > 0 && (
                             <Card className="p-6 rounded-2xl border-gray-100 shadow-sm">
-                                   <h3 className="font-bold text-[#1e232c] mb-4">Skill Breakdown</h3>
-                                   <div className="grid grid-cols-2 gap-3">
-                                          {skillBreakdown.map((skill: any, i: number) => (
+                                   <h3 className="font-bold text-[#1e232c] mb-4">Skill-wise Rating</h3>
+                                   <div className="space-y-3">
+                                          {sections.map((section, i) => (
                                                  <div key={i} className="flex items-center justify-between">
-                                                        <span className="text-sm text-gray-700">{skill.name}</span>
-                                                        <div className="flex items-center gap-0.5">
+                                                        <span className="text-sm text-gray-700 font-medium">{section.title}</span>
+                                                        <div className="flex items-center gap-1">
                                                                {Array.from({ length: 5 }, (_, si) => (
-                                                                      <Star key={si} className={`size-3.5 ${si < (skill.rating || 0) ? "text-[#FF9E44] fill-[#FF9E44]" : "text-gray-200 fill-gray-200"}`} />
+                                                                      <Star key={si} className={`size-3.5 ${si < section.rating ? "text-[#FF9E44] fill-[#FF9E44]" : "text-gray-200 fill-gray-200"}`} />
                                                                ))}
+                                                               <span className="text-xs font-bold text-gray-500 ml-1">{section.rating}/5</span>
                                                         </div>
                                                  </div>
                                           ))}
@@ -895,16 +1027,19 @@ function PracticeInterviewTab({ report, isLoading, particular }: { report: any; 
                             </Card>
                      )}
 
-                     {keyRemarks && (
-                            <Card className="p-5 rounded-2xl border-orange-200 bg-orange-50 shadow-sm">
-                                   <div className="flex items-start gap-3">
-                                          <span className="text-lg">⭐</span>
-                                          <div>
-                                                 <p className="font-semibold text-[#1e232c] mb-1">Key Remarks</p>
-                                                 <p className="text-sm text-gray-700 leading-relaxed">{keyRemarks}</p>
+                     {/* Feedback Summary */}
+                     {feedbackEntries.length > 0 && (
+                            <div className="space-y-4">
+                                   <h3 className="font-bold text-[#1e232c]">Mentor Feedback</h3>
+                                   {feedbackEntries.map((entry, i) => (
+                                          <div key={i}>
+                                                 <SectionLabel className={`${entry.color} mb-2`}>{entry.label}</SectionLabel>
+                                                 <Card className="p-5 rounded-2xl border-gray-100 shadow-sm mt-1">
+                                                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{entry.value}</p>
+                                                 </Card>
                                           </div>
-                                   </div>
-                            </Card>
+                                   ))}
+                            </div>
                      )}
               </div>
        )

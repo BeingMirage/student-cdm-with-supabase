@@ -1,0 +1,300 @@
+{
+  "meta": {
+    "date": "2024-11-20",
+    "mentee_name": "Lokesh Shrivastva",
+    "mentor_name": "Ajay Kumar",
+    "overall_rating": 4,
+    "report_version": "v2",
+    "alignment_score": 3
+  },
+  "sections": [
+    {
+      "items": [
+        {
+          "label": "Lack of linguistic clarity (e.g., grammar, sentence structure, word choice)",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Lack of conceptual clarity (e.g., unclear thoughts, vague expressions)",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Poor organization of ideas (e.g., information not logically structured)",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Provided generic details without specifying achievements or experiences",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Over-explained or added irrelevant information that diluted the message",
+          "value": false,
+          "is_positive": false
+        }
+      ],
+      "title": "Communication Quality",
+      "rating": 0
+    },
+    {
+      "items": [
+        {
+          "label": "Content reflects strong understanding of the domain",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Examples and experiences are relevant to the field they wish to pursue",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Shows clarity in career focus and goals",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Lacks connection between past experiences and future aspirations",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Content appears generic or misaligned with the chosen domain",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Unclear or scattered focus across multiple, unrelated fields",
+          "value": false,
+          "is_positive": false
+        }
+      ],
+      "title": "Relevance of Content",
+      "rating": 3
+    },
+    {
+      "items": [
+        {
+          "label": "Expressed ideas clearly and confidently",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Maintained logical flow and structure while speaking",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Used simple and understandable language",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Avoided filler words and stayed focused on the point",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Struggled to find the right words or frame responses",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Ideas were scattered or lacked coherence",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Overused technical jargon or buzzwords unnecessarily",
+          "value": false,
+          "is_positive": false
+        }
+      ],
+      "title": "Clarity of Thoughts",
+      "rating": 3
+    },
+    {
+      "items": [
+        {
+          "label": "Demonstrated strong understanding of key domain concepts",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Was able to explain complex ideas clearly and accurately",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Used relevant terminology appropriately and confidently",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Provided examples or experiences that reflected applied knowledge",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Struggled to explain basic or advanced concepts in their field",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Failed to connect theoretical knowledge to practical applications",
+          "value": false,
+          "is_positive": false
+        }
+      ],
+      "title": "Domain Knowledge",
+      "rating": 3
+    },
+    {
+      "items": [
+        {
+          "label": "Effective verbal communication (clear speech, appropriate tone and pace)",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Confident body language and eye contact",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Active listening and responsiveness to questions",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Demonstrated teamwork or collaboration mindset",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Showed problem-solving ability through structured thinking",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Displayed adaptability and openness to feedback",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Maintained a positive and respectful attitude",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Struggled with verbal or non-verbal communication",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Lacked interpersonal warmth or emotional intelligence",
+          "value": false,
+          "is_positive": false
+        }
+      ],
+      "title": "Soft Skills",
+      "rating": 3
+    },
+    {
+      "items": [
+        {
+          "label": "Actively listened and acknowledged feedback positively",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Asked clarifying questions to understand feedback better",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Demonstrated a growth mindset and willingness to improve",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Reflected on feedback shared during the conversation",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Seemed resistant or dismissive toward constructive criticism",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Showed defensiveness or justification instead of openness",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Gave examples of past learning from feedback or failures",
+          "value": true,
+          "is_positive": true
+        }
+      ],
+      "title": "Openness to Feedback",
+      "rating": 4
+    },
+    {
+      "items": [
+        {
+          "label": "Demonstrated a positive attitude and optimism throughout the conversation",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Exuded self-confidence without being overbearing",
+          "value": false,
+          "is_positive": true
+        },
+        {
+          "label": "Maintained a calm and composed demeanor, even when challenged",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Displayed resilience and a solution-oriented mindset in discussions",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Showed enthusiasm and motivation towards their career goals",
+          "value": true,
+          "is_positive": true
+        },
+        {
+          "label": "Had difficulty maintaining composure under pressure or stress",
+          "value": false,
+          "is_positive": false
+        },
+        {
+          "label": "Displayed uncertainty or lack of confidence in their responses",
+          "value": false,
+          "is_positive": false
+        }
+      ],
+      "title": "Confidence & Emotional Readiness",
+      "rating": 4
+    }
+  ],
+  "feedback_summary": {
+    "job_fit": "1. Finance Ops.   2. Gen Man",
+    "plan_b_c": "Na",
+    "target_roles": "1. Finance Ops.   2. Gen Man",
+    "focused_and_final": "5",
+    "strongest_aspects": "1. Good technical knowledge of finance Ops",
+    "areas_for_improvement": "1. Communication skills.     2. Learning SPSS, NISRM Research certification and other data analytics tools as required for Finance Ops role. 3.Read about Alteryx and solve case studies",
+    "clarity_change_since_di1": "4",
+    "articulation_shift_since_di1": "Na",
+    "recommended_actions_4_to_6_weeks": "1. Communication skills.     2. Learning SPSS, NISRM Research certification and other data analytics tools as required for Finance Ops role. 3.Read about Alteryx and solve case studies"
+  }
+}

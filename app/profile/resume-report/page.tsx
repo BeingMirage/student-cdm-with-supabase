@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
@@ -21,6 +22,8 @@ export default function ResumeReportPage() {
        const [reportData, setReportData] = useState<any>(null)
        const [loading, setLoading] = useState(true)
        const supabase = createClient()
+       const searchParams = useSearchParams()
+       const reportId = searchParams.get('id')
 
        useEffect(() => {
               const fetchReport = async () => {
@@ -28,6 +31,22 @@ export default function ResumeReportPage() {
                      setLoading(true)
 
                      try {
+                            // If a specific report ID is provided, fetch by ID directly
+                            if (reportId) {
+                                   const { data, error } = await supabase
+                                          .from("cdm_student_reports")
+                                          .select("*")
+                                          .eq("id", reportId)
+                                          .maybeSingle()
+
+                                   if (!error && data) {
+                                          setReport(data)
+                                          setReportData(data.report_data || {})
+                                   }
+                                   return
+                            }
+
+                            // Fallback: find by type (legacy behavior)
                             const { data: attendees } = await supabase
                                    .from('cdm_session_attendees')
                                    .select('id')
