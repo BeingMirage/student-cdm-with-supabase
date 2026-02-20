@@ -89,33 +89,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             .maybeSingle()
 
                      if (error) {
-                            console.error('Error fetching profile:', error)
+                            console.error('Error fetching profile from cdm_students:', error)
+                            // Fallback to minimal profile from Auth user if DB fetch fails
+                            setProfile({
+                                   id: userEmail,
+                                   email: userEmail,
+                                   full_name: userEmail.split('@')[0],
+                                   phone: null,
+                                   batch_id: null,
+                                   gender: null,
+                                   enrollment_id: null,
+                                   institute_name: null
+                            } as Profile)
                             return
                      }
 
                      if (!data) {
-                            console.error('Profile not found for email:', userEmail)
+                            console.error('Profile not found in cdm_students for email:', userEmail)
+                            // Fallback to minimal profile from Auth user if DB fetch fails
+                            setProfile({
+                                   id: userEmail,
+                                   email: userEmail,
+                                   full_name: userEmail.split('@')[0],
+                                   phone: null,
+                                   batch_id: null,
+                                   gender: null,
+                                   enrollment_id: null,
+                                   institute_name: null
+                            } as Profile)
                             return
                      }
 
                      // Derive institute_name from cdm_batches → cdm_institutes
                      let institute_name: string | null = null
-                     if (data.batch_id) {
-                            const { data: batch } = await supabase
-                                   .from('cdm_batches')
-                                   .select('institute_id')
-                                   .eq('id', data.batch_id)
-                                   .maybeSingle()
-
-                            if (batch?.institute_id) {
-                                   const { data: institute } = await supabase
-                                          .from('cdm_institutes')
-                                          .select('name')
-                                          .eq('id', batch.institute_id)
+                     try {
+                            if (data.batch_id) {
+                                   const { data: batch } = await supabase
+                                          .from('cdm_batches')
+                                          .select('institute_id')
+                                          .eq('id', data.batch_id)
                                           .maybeSingle()
 
-                                   institute_name = institute?.name ?? null
+                                   if (batch?.institute_id) {
+                                          const { data: institute } = await supabase
+                                                 .from('cdm_institutes')
+                                                 .select('name')
+                                                 .eq('id', batch.institute_id)
+                                                 .maybeSingle()
+
+                                          institute_name = institute?.name ?? null
+                                   }
                             }
+                     } catch (err) {
+                            console.warn("Could not fetch institute details (likely RLS), proceeding with null institute_name", err)
                      }
 
                      setProfile({ ...data, institute_name })
