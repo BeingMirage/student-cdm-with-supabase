@@ -27,10 +27,12 @@ export default function LoginPage() {
               const password = formData.get('password') as string
 
               try {
-                     const { data, error: authError } = await supabase.auth.signInWithPassword({
-                            email,
-                            password,
-                     })
+                     const { data, error: authError } = await Promise.race([
+                            supabase.auth.signInWithPassword({ email, password }),
+                            new Promise<never>((_, reject) =>
+                                   setTimeout(() => reject(new Error("Login timed out. Please check your internet connection and try again.")), 10000)
+                            )
+                     ])
 
                      if (authError) {
                             setError(authError.message || "Invalid credentials")

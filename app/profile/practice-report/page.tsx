@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { Card } from "@/components/ui/card"
 import { Star } from "lucide-react"
 import {
@@ -16,7 +17,7 @@ import { createClient } from "@/lib/supabase/client"
 
 // ─── Page Component ──────────────────────────────────────────────────
 
-export default function PracticeReportPage() {
+function PracticeReportContent() {
        const { user, profile } = useAuth()
        const [report, setReport] = useState<Record<string, unknown> | null>(null)
        const [reportData, setReportData] = useState<Record<string, unknown> | null>(null)
@@ -288,5 +289,13 @@ export default function PracticeReportPage() {
                             )}
                      </div>
               </div>
+       )
+}
+
+export default function PracticeReportPage() {
+       return (
+              <Suspense fallback={<div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center"><p className="text-gray-500">Loading report...</p></div>}>
+                     <PracticeReportContent />
+              </Suspense>
        )
 }

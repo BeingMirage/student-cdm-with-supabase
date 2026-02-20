@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { createClient } from "@/lib/supabase/client"
@@ -46,7 +46,7 @@ type ReportData = {
 
 // ─── Page Component ──────────────────────────────────────────────────
 
-export default function DiagnosticReportPage() {
+function DiagnosticReportContent() {
        const { user, profile } = useAuth()
        const [report, setReport] = useState<Record<string, unknown> | null>(null)
        const [reportData, setReportData] = useState<ReportData | null>(null)
@@ -253,5 +253,13 @@ export default function DiagnosticReportPage() {
                             </div>
                      </div>
               </div>
+       )
+}
+
+export default function DiagnosticReportPage() {
+       return (
+              <Suspense fallback={<div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center"><p className="text-gray-500">Loading report...</p></div>}>
+                     <DiagnosticReportContent />
+              </Suspense>
        )
 }
