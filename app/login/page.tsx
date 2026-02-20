@@ -44,9 +44,10 @@ export default function LoginPage() {
                             return
                      }
 
-                     // The AuthProvider will automatically pick up the SIGNED_IN event
-                     // and fetch the profile. We just need to navigate to the dashboard.
-                     router.push('/dashboard')
+                     // Short wait for Supabase session cookie to be written before
+                     // doing a hard redirect (middleware needs the cookie to validate auth)
+                     await new Promise(resolve => setTimeout(resolve, 500))
+                     window.location.href = '/dashboard'
               } catch (err: any) {
                      console.error("Login error:", err)
                      setError(err?.message || "An unexpected error occurred")
