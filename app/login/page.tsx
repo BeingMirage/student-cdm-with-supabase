@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
        const [isLoading, setIsLoading] = useState(false)
+       const [loadingText, setLoadingText] = useState('Logging in...')
        const [error, setError] = useState<string | null>(null)
        const [showPassword, setShowPassword] = useState(false)
        const supabase = createClient()
@@ -21,18 +22,26 @@ export default function LoginPage() {
               e.preventDefault()
               setIsLoading(true)
               setError(null)
+              setLoadingText('Connecting...')
 
               const formData = new FormData(e.currentTarget as HTMLFormElement)
               const email = formData.get('email') as string
               const password = formData.get('password') as string
 
+              // Show a helpful message after 5 seconds if still waiting
+              const slowTimer = setTimeout(() => {
+                     setLoadingText('Waking up server, please wait...')
+              }, 5000)
+
               try {
                      const { data, error: authError } = await Promise.race([
                             supabase.auth.signInWithPassword({ email, password }),
                             new Promise<never>((_, reject) =>
-                                   setTimeout(() => reject(new Error("Login timed out. Please check your internet connection and try again.")), 10000)
+                                   setTimeout(() => reject(new Error("Server is slow to respond. Please try again.")), 30000)
                             )
                      ])
+
+                     clearTimeout(slowTimer)
 
                      if (authError) {
                             setError(authError.message || "Invalid credentials")
@@ -51,6 +60,7 @@ export default function LoginPage() {
                      await new Promise(resolve => setTimeout(resolve, 500))
                      window.location.href = '/dashboard'
               } catch (err: any) {
+                     clearTimeout(slowTimer)
                      console.error("Login error:", err)
                      setError(err?.message || "An unexpected error occurred")
                      setIsLoading(false)
@@ -149,7 +159,12 @@ export default function LoginPage() {
 
                                                         {/* Submit Button */}
                                                         <Button type="submit" disabled={isLoading} className="w-full h-[56px] text-[20px] bg-[#161616] hover:bg-black/90 rounded-[12px] tracking-[0.2px]">
-                                                               {isLoading ? <Loader2 className="animate-spin" /> : "Log in"}
+                                                               {isLoading ? (
+                                                                      <span className="flex items-center gap-2">
+                                                                             <Loader2 className="animate-spin w-5 h-5" />
+                                                                             {loadingText}
+                                                                      </span>
+                                                               ) : "Log in"}
                                                         </Button>
                                                  </form>
                                           </TabsContent>
